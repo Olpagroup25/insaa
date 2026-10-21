@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ocultar el menú "Field Service" original: para el usuario final
+         debe existir una sola puerta de entrada ("Reparto"), no dos
+         nombres distintos para los mismos datos. -->
+    <record id="fieldservice.root" model="ir.ui.menu">
+        <field name="active">False</field>
+    </record>
+
+    <menuitem
+        id="menu_reparto_root"
+        name="Reparto"
+        sequence="15"
+        web_icon="insa_reparto,static/description/icon.png"
+        groups="fieldservice.group_fsm_user_own"
+    />
+
+    <menuitem id="menu_reparto_hojas_ruta" name="Hojas de Ruta"
+              parent="menu_reparto_root"
+              action="fieldservice_route.action_fsm_route_dayroute"
+              sequence="10"/>
+
+    <!-- C-18/RN-27: sin groups= a propósito — "esto se lo permitimos a
+         todos los repartidores", son ellos los que al final de la ruta
+         acomodan a los clientes nuevos. El menú raíz ya filtra a
+         fieldservice.group_fsm_user_own, no hace falta restringir más. -->
+    <menuitem id="menu_reparto_orden_clientes" name="Orden de clientes"
+              parent="menu_reparto_root"
+              action="action_insa_ruta_plantilla"
+              sequence="15"/>
+
+    <menuitem id="menu_reparto_ordenes" name="Órdenes de Servicio"
+              parent="menu_reparto_root"
+              action="fieldservice.action_fsm_operation_order"
+              sequence="20"/>
+
+    <!-- R-08: con el filtro "Solo activos" puesto por defecto. -->
+    <menuitem id="menu_reparto_clientes" name="Clientes"
+              parent="menu_reparto_root"
+              action="action_insa_clientes_reparto"
+              sequence="30"/>
+
+    <menuitem id="menu_reparto_rutas" name="Rutas"
+              parent="menu_reparto_root"
+              action="fieldservice_route.action_fsm_route"
+              sequence="40"/>
+
+    <menuitem id="menu_reparto_repartidores" name="Repartidores"
+              parent="menu_reparto_root"
+              action="fieldservice.action_fsm_person"
+              sequence="50"/>
+
+    <menuitem id="menu_reparto_control_playa" name="Controles de playa"
+              parent="menu_reparto_root"
+              action="action_insa_control_playa"
+              sequence="55"/>
+
+    <menuitem id="menu_reparto_liquidacion" name="Liquidación"
+              parent="menu_reparto_root"
+              sequence="57"/>
+
+    <menuitem id="menu_reparto_liquidacion_articulo" name="Artículos"
+              parent="menu_reparto_liquidacion"
+              action="action_insa_liquidacion_articulo"
+              sequence="10"/>
+
+    <menuitem id="menu_reparto_liquidacion_envase" name="Envases"
+              parent="menu_reparto_liquidacion"
+              action="action_insa_liquidacion_envase"
+              sequence="20"/>
+
+    <menuitem id="menu_reparto_saldo_envase" name="Saldo de envases"
+              parent="menu_reparto_root"
+              action="action_insa_saldo_envase"
+              sequence="58"/>
+
+    <menuitem id="menu_reparto_abono_tipo" name="Tipos de abono"
+              parent="menu_reparto_root"
+              action="action_insa_abono_tipo"
+              groups="insa_reparto.group_supervisor"
+              sequence="59"/>
+
+    <menuitem id="menu_reparto_credenciales" name="Credenciales app (reparto)"
+              parent="menu_reparto_root"
+              action="action_insa_repartidor_credencial"
+              groups="insa_reparto.group_supervisor"
+              sequence="60"/>
+
+    <menuitem id="menu_reparto_ajustes_inventario" name="Ajustes de inventario"
+              parent="menu_reparto_root"
+              action="action_insa_ajuste_inventario"
+              groups="insa_reparto.group_supervisor"
+              sequence="65"/>
+</odoo>

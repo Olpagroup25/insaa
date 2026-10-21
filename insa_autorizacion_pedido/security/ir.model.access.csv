@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_insa_autorizacion_pedido_user,insa.autorizacion.pedido.user,model_insa_autorizacion_pedido,base.group_user,1,0,0,0
+access_insa_autorizacion_pedido_supervisor,insa.autorizacion.pedido.supervisor,model_insa_autorizacion_pedido,insa_reparto.group_supervisor,1,1,1,1
+access_insa_activar_cliente_propio_wizard,insa.activar.cliente.propio.wizard,model_insa_activar_cliente_propio_wizard,insa_reparto.group_supervisor,1,1,1,1

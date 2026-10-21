@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Revisión 07/10: catálogo de tipos de abono ("Abonos Tipos" del
+         sistema viejo) — el punto de partida que se copia al crear un
+         abono para un cliente (ver insa.abono._onchange_abono_tipo_id). -->
+    <record id="insa_abono_tipo_list" model="ir.ui.view">
+        <field name="name">insa.abono.tipo.list</field>
+        <field name="model">insa.abono.tipo</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="categoria"/>
+                <field name="precio"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_abono_tipo_form" model="ir.ui.view">
+        <field name="name">insa.abono.tipo.form</field>
+        <field name="model">insa.abono.tipo</field>
+        <field name="arch" type="xml">
+            <form string="Tipo de abono">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="categoria"/>
+                        <field name="precio"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                    <separator string="Productos incluidos"/>
+                    <field name="linea_ids">
+                        <list editable="bottom">
+                            <field name="product_id"/>
+                            <field name="cantidad_incluida"/>
+                            <field name="precio_excedente"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_insa_abono_tipo" model="ir.actions.act_window">
+        <field name="name">Tipos de abono</field>
+        <field name="res_model">insa.abono.tipo</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Definí un tipo de abono (catálogo de planes)
+            </p>
+        </field>
+    </record>
+</odoo>

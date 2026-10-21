@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="insa_movimiento_cliente_form" model="ir.ui.view">
+        <field name="name">insa.movimiento.cliente.form</field>
+        <field name="model">insa.movimiento.cliente</field>
+        <field name="arch" type="xml">
+            <form string="Movimiento por cliente">
+                <!-- R-02 (14/09): ya no se confirma visita por visita — el
+                     movimiento de envases y el pedido de venta se generan
+                     todos juntos al finalizar el reparto. -->
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="hoja_ruta_id"/>
+                            <field name="partner_id"/>
+                            <field name="secuencia"/>
+                            <field name="iconos_visita" readonly="1" string="Íconos"/>
+                            <field name="visitado"/>
+                            <field name="resultado"/>
+                        </group>
+                        <group>
+                            <field name="es_extra"/>
+                            <field name="origen_extra" invisible="not es_extra"/>
+                            <field name="pedido_extra_id" invisible="not es_extra"/>
+                            <field name="cobro_efectivo"/>
+                            <field name="medio_pago" invisible="not cobro_efectivo"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="envase_movido" readonly="1"/>
+                        <field name="sale_order_id" readonly="1"/>
+                        <field name="tiene_venta" readonly="1"/>
+                        <field name="tiene_devolucion_articulo" readonly="1"/>
+                        <field name="tiene_mov_envase" readonly="1"/>
+                        <field name="tiene_cobro" readonly="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Artículos">
+                            <field name="linea_articulo_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="tipo" widget="badge"
+                                           decoration-success="tipo == 'venta'"
+                                           decoration-warning="tipo == 'devolucion'"/>
+                                    <field name="motivo" invisible="tipo != 'devolucion'"
+                                           required="tipo == 'devolucion'"/>
+                                    <field name="cambio_directo" invisible="tipo != 'devolucion'"/>
+                                    <field name="cantidad"/>
+                                    <field name="precio_unitario"/>
+                                    <field name="subtotal"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Envases">
+                            <field name="linea_envase_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="tipo" widget="badge"
+                                           decoration-warning="tipo == 'prestamo'"
+                                           decoration-success="tipo == 'devolucion'"/>
+                                    <field name="cantidad"/>
+                                    <field name="sin_alerta_previa" readonly="1"
+                                           invisible="tipo != 'devolucion'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

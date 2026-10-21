@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fsm_route_form_insa" model="ir.ui.view">
+        <field name="name">fsm.route.form.insa</field>
+        <field name="model">fsm.route</field>
+        <field name="inherit_id" ref="fieldservice_route.fsm_route_form"/>
+        <field name="arch" type="xml">
+            <group id="left" position="inside">
+                <field name="numero_reparto"/>
+                <!-- 4.5 (revisión 29/09): se copian a cada hoja de ruta
+                     nueva de esta Ruta — ver create() en
+                     fsm.route.dayroute. -->
+                <field name="repartidor_habitual_id"/>
+                <field name="vehiculo_habitual_id"/>
+            </group>
+            <!-- C-11: datos base de planificación del móvil — vacíos
+                 hasta el formulario de relevamiento (V-14). -->
+            <group id="right" position="inside">
+                <field name="ubicacion_inicio_id"/>
+                <field name="ubicacion_fin_id"/>
+                <field name="duracion_prevista" widget="float_time"/>
+                <field name="km_estimados"/>
+            </group>
+        </field>
+    </record>
+</odoo>

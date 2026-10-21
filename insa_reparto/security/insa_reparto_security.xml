@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_supervisor" model="res.groups">
+        <field name="name">Supervisor de reparto</field>
+        <field name="category_id" ref="fieldservice.fsm"/>
+        <field name="implied_ids" eval="[(4, ref('fieldservice.group_fsm_manager'))]"/>
+        <!-- Sin esto, nadie es miembro del grupo — ni siquiera el admin —
+             y todo lo que depende de él (menús "Credenciales app (reparto)"
+             / "Ajustes de inventario", el botón "Cerrar con diferencias",
+             y el acceso a esos modelos en ir.model.access.csv) queda
+             invisible/inaccesible para todo el mundo. Mismo patrón que
+             fieldservice.group_fsm_manager (ver
+             fieldservice/security/res_groups.xml). -->
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Puede forzar el cierre de una hoja de ruta con diferencias sin resolver.</field>
+    </record>
+
+    <record id="group_controlador" model="res.groups">
+        <field name="name">Controlador de playa</field>
+        <field name="category_id" ref="fieldservice.fsm"/>
+        <!-- C-08/C-09 (confirmado en la reunión del 08/06; antes era el
+             supuesto 0.1): segundo factor de aprobación de un control de
+             playa. Es un permiso propio, no implica group_supervisor (que
+             significa "puede forzar cierre con diferencias", un permiso
+             distinto) ni viceversa — una persona puede tener uno, otro, o
+             los dos.
+
+             El xml_id sigue siendo group_controlador y no
+             group_controlador_playa como sugiere el documento: renombrarlo
+             desasignaría a los usuarios que ya lo tengan. Lo que se alinea
+             con el vocabulario del cliente es el nombre visible.
+
+             implied_ids: sin esto el controlador no ve el menú Reparto (la
+             raíz pide fieldservice.group_fsm_user_own) y no podría abrir el
+             control para aprobarlo desde la web — el fallback de C-09
+             quedaba muerto. -->
+        <field name="implied_ids" eval="[(4, ref('fieldservice.group_fsm_user_own'))]"/>
+        <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+        <field name="comment">Puede aprobar un control de playa con su usuario y contraseña, desde la app o desde el backoffice. Es el único perfil que puede hacerlo: el repartidor no aprueba su propio conteo.</field>
+    </record>
+
+    <record id="group_administrativa_cierre" model="res.groups">
+        <field name="name">Administrativa de cierre</field>
+        <field name="category_id" ref="fieldservice.fsm"/>
+        <!-- R-03 / R-07 (reunión 14/09): el cierre de la hoja de ruta se
+             hace desde la web y lo hace una sola persona (Camila). Es un
+             rol distinto del controlador de playa (que aprueba conteos en
+             el depósito, desde la app) y del supervisor: "la diferencia de
+             pérdida únicamente tiene autorización Camila".
+
+             implied_ids: necesita ver todas las hojas de ruta, no solo las
+             propias, para declarar el efectivo y finalizar cualquier
+             reparto del día. -->
+        <field name="implied_ids" eval="[(4, ref('fieldservice.group_fsm_user'))]"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+        <field name="comment">Declara el efectivo del ticket del cajero, corrige controles de playa y ventas desde la web, registra pérdidas y finaliza el reparto (con o sin diferencias). Es el único perfil que puede cerrar una hoja de ruta.</field>
+    </record>
+</odoo>

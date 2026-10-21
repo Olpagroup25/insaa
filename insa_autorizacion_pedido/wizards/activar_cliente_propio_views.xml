@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_activar_cliente_propio_wizard_form" model="ir.ui.view">
+        <field name="name">insa.activar.cliente.propio.wizard.form</field>
+        <field name="model">insa.activar.cliente.propio.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Domicilio particular">
+                <div class="alert alert-info" role="alert">
+                    Para habilitar a <field name="persona_id" readonly="1" nolabel="1"
+                        class="oe_inline"/> como cliente por derecho propio hay
+                    que cargar su domicilio de entrega. Se creará una ubicación
+                    de servicio llamada
+                    <b>"&lt;Persona&gt; (consumo propio)"</b>.
+                </div>
+                <group>
+                    <group string="Domicilio">
+                        <field name="insa_city_id"/>
+                        <field name="insa_street_id"/>
+                        <field name="insa_street_number"/>
+                        <field name="insa_floor"/>
+                        <field name="insa_apartment"/>
+                        <field name="zip"/>
+                    </group>
+                    <group string="Reparto">
+                        <field name="fsm_route_id"/>
+                        <field name="notas"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_confirmar" type="object" string="Confirmar y crear ubicación"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

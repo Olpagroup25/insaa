@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- R-07 (reunión 14/09): motivos generales precargados, a validar con
+         INSA. noupdate: INSA los puede renombrar o agregar otros desde
+         Configuración sin que una actualización del módulo los pise. -->
+    <record id="motivo_perdida_mercaderia_en_ruta" model="insa.reparto.perdida.motivo">
+        <field name="name">Mercadería perdida en ruta</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="motivo_perdida_diferencia_efectivo" model="insa.reparto.perdida.motivo">
+        <field name="name">Diferencia de efectivo</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="motivo_perdida_envase_no_recuperado" model="insa.reparto.perdida.motivo">
+        <field name="name">Envase no recuperado</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="motivo_perdida_error_carga" model="insa.reparto.perdida.motivo">
+        <field name="name">Error de carga no identificado</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="motivo_perdida_otro" model="insa.reparto.perdida.motivo">
+        <field name="name">Otro</field>
+        <field name="sequence">90</field>
+    </record>
+</odoo>

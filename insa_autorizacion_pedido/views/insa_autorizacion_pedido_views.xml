@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_insa_autorizacion_pedido_list" model="ir.ui.view">
+        <field name="name">insa.autorizacion.pedido.list</field>
+        <field name="model">insa.autorizacion.pedido</field>
+        <field name="arch" type="xml">
+            <list string="Autorizaciones de pedido" editable="bottom"
+                  decoration-muted="not activo">
+                <field name="persona_id"/>
+                <field name="cuenta_id"/>
+                <field name="rol"/>
+                <field name="fecha_desde"/>
+                <field name="fecha_hasta"/>
+                <field name="activo" widget="boolean_toggle"/>
+                <field name="nota" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_insa_autorizacion_pedido_form" model="ir.ui.view">
+        <field name="name">insa.autorizacion.pedido.form</field>
+        <field name="model">insa.autorizacion.pedido</field>
+        <field name="arch" type="xml">
+            <form string="Autorización de pedido">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="persona_id"/>
+                            <field name="cuenta_id"/>
+                            <field name="rol"/>
+                        </group>
+                        <group>
+                            <field name="activo"/>
+                            <field name="fecha_desde"/>
+                            <field name="fecha_hasta"/>
+                        </group>
+                    </group>
+                    <field name="nota" placeholder="Nota interna (opcional)..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_insa_autorizacion_pedido_search" model="ir.ui.view">
+        <field name="name">insa.autorizacion.pedido.search</field>
+        <field name="model">insa.autorizacion.pedido</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="persona_id"/>
+                <field name="cuenta_id"/>
+                <filter string="Vigentes" name="vigentes" domain="[('activo', '=', True)]"/>
+                <separator/>
+                <filter string="Titulares" name="titulares" domain="[('rol', '=', 'titular')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Cuenta" name="group_cuenta" context="{'group_by': 'cuenta_id'}"/>
+                    <filter string="Persona" name="group_persona" context="{'group_by': 'persona_id'}"/>
+                    <filter string="Rol" name="group_rol" context="{'group_by': 'rol'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insa_autorizacion_pedido" model="ir.actions.act_window">
+        <field name="name">Autorizaciones de pedido</field>
+        <field name="res_model">insa.autorizacion.pedido</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_vigentes': 1}</field>
+    </record>
+
+    <menuitem id="menu_insa_autorizacion_pedido"
+              name="Autorizaciones de pedido"
+              parent="insa_reparto.menu_reparto_config"
+              action="action_insa_autorizacion_pedido"
+              sequence="50"/>
+
+</odoo>

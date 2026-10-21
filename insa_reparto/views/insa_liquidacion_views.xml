@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- RN-09/C-15: relleno de fondo (no letra) en la fila con diferencia,
+         acá en versión cruzada entre repartos (para que el supervisor
+         pueda ver de una todos los faltantes del día, no reparto por
+         reparto) — mismo CSS scopeado por clase que usan las listas
+         embebidas en la hoja de ruta (insa_liquidacion.css). Sin
+         decoration-success: "entrás a una liquidación y ves todo en
+         blanco: la liquidación está limpia". -->
+
+    <record id="insa_liquidacion_articulo_list" model="ir.ui.view">
+        <field name="name">insa.liquidacion.articulo.list</field>
+        <field name="model">insa.liquidacion.articulo</field>
+        <field name="arch" type="xml">
+            <list class="o_insa_liquidacion_row" decoration-warning="estado == 'revisar'"
+                  create="false" edit="false" delete="false">
+                <field name="hoja_ruta_id"/>
+                <field name="product_id"/>
+                <field name="salida"/>
+                <field name="entrada"/>
+                <field name="teorico"/>
+                <field name="registrado"/>
+                <field name="diferencia_texto" string="Diferencia"/>
+                <field name="estado" widget="badge"
+                       decoration-success="estado == 'ok'"
+                       decoration-warning="estado == 'revisar'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_liquidacion_articulo_search" model="ir.ui.view">
+        <field name="name">insa.liquidacion.articulo.search</field>
+        <field name="model">insa.liquidacion.articulo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="hoja_ruta_id"/>
+                <field name="product_id"/>
+                <filter string="Con diferencias" name="con_diferencias" domain="[('diferencia', '!=', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Hoja de ruta" name="group_hoja_ruta" context="{'group_by': 'hoja_ruta_id'}"/>
+                    <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insa_liquidacion_articulo" model="ir.actions.act_window">
+        <field name="name">Liquidación de artículos</field>
+        <field name="res_model">insa.liquidacion.articulo</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="insa_liquidacion_articulo_search"/>
+        <field name="context">{'search_default_con_diferencias': 1}</field>
+    </record>
+
+    <record id="insa_liquidacion_envase_list" model="ir.ui.view">
+        <field name="name">insa.liquidacion.envase.list</field>
+        <field name="model">insa.liquidacion.envase</field>
+        <field name="arch" type="xml">
+            <list class="o_insa_liquidacion_row" decoration-warning="estado == 'revisar'"
+                  create="false" edit="false" delete="false">
+                <field name="hoja_ruta_id"/>
+                <field name="product_id"/>
+                <field name="salida"/>
+                <field name="prestamos"/>
+                <field name="devoluciones"/>
+                <field name="entrada_teorica"/>
+                <field name="entrada_real"/>
+                <field name="diferencia_texto" string="Diferencia"/>
+                <field name="estado" widget="badge"
+                       decoration-success="estado == 'ok'"
+                       decoration-warning="estado == 'revisar'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_liquidacion_envase_search" model="ir.ui.view">
+        <field name="name">insa.liquidacion.envase.search</field>
+        <field name="model">insa.liquidacion.envase</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="hoja_ruta_id"/>
+                <field name="product_id"/>
+                <filter string="Con diferencias" name="con_diferencias" domain="[('diferencia', '!=', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Hoja de ruta" name="group_hoja_ruta" context="{'group_by': 'hoja_ruta_id'}"/>
+                    <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insa_liquidacion_envase" model="ir.actions.act_window">
+        <field name="name">Liquidación de envases</field>
+        <field name="res_model">insa.liquidacion.envase</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="insa_liquidacion_envase_search"/>
+        <field name="context">{'search_default_con_diferencias': 1}</field>
+    </record>
+
+    <!-- 4.8: no existía pantalla aparte para Fallados — se agrega
+         siguiendo el mismo patrón de Artículos/Envases, para poder
+         abrir "solo diferencias" filtrado por esta hoja de ruta. -->
+    <record id="insa_liquidacion_fallado_list" model="ir.ui.view">
+        <field name="name">insa.liquidacion.fallado.list</field>
+        <field name="model">insa.liquidacion.fallado</field>
+        <field name="arch" type="xml">
+            <list class="o_insa_liquidacion_row" decoration-warning="estado == 'revisar'"
+                  create="false" edit="false" delete="false">
+                <field name="hoja_ruta_id"/>
+                <field name="product_id"/>
+                <field name="registrados"/>
+                <field name="contados"/>
+                <field name="diferencia_texto" string="Diferencia"/>
+                <field name="estado" widget="badge"
+                       decoration-success="estado == 'ok'"
+                       decoration-warning="estado == 'revisar'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_liquidacion_fallado_search" model="ir.ui.view">
+        <field name="name">insa.liquidacion.fallado.search</field>
+        <field name="model">insa.liquidacion.fallado</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="hoja_ruta_id"/>
+                <field name="product_id"/>
+                <filter string="Con diferencias" name="con_diferencias" domain="[('discordancia', '!=', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Hoja de ruta" name="group_hoja_ruta" context="{'group_by': 'hoja_ruta_id'}"/>
+                    <filter string="Producto" name="group_product" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insa_liquidacion_fallado" model="ir.actions.act_window">
+        <field name="name">Liquidación de fallados</field>
+        <field name="res_model">insa.liquidacion.fallado</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="insa_liquidacion_fallado_search"/>
+        <field name="context">{'search_default_con_diferencias': 1}</field>
+    </record>
+</odoo>

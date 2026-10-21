@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_insa" model="ir.ui.view">
+        <field name="name">res.partner.form.insa</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <page name="sales_purchases" position="after">
+                <page string="INSA - Reparto" name="insa_reparto">
+                    <!-- C-20: un alta rápida desde la app queda acá como
+                         'Incompleto' hasta que administración termine de
+                         cargar los datos de facturación. -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="estado_completitud != 'incompleto'">
+                        Alta rápida desde la app: faltan completar los datos
+                        de facturación.
+                    </div>
+                    <group>
+                        <field name="estado_completitud" widget="badge"
+                               decoration-warning="estado_completitud == 'incompleto'"
+                               decoration-success="estado_completitud == 'completo'"/>
+                        <field name="insa_frecuencia_entrega"/>
+                        <field name="insa_dias_entrega"/>
+                        <field name="alias_bancario"/>
+                        <field name="property_stock_customer" readonly="1"/>
+                    </group>
+                    <!-- C-22: FUE y FUC, con umbral parametrizable por
+                         cliente (RN-29) — editable en masa seleccionando
+                         varios contactos por etiqueta y cambiando el
+                         umbral desde la lista. -->
+                    <separator string="FUE / FUC"/>
+                    <group>
+                        <group>
+                            <field name="fecha_ultima_entrega" readonly="1"/>
+                            <field name="dias_sin_entrega" readonly="1"/>
+                            <field name="umbral_alerta_entrega"/>
+                            <!-- widget="badge" no tiene formato propio para
+                                 Boolean (queda mostrando el HTML crudo del
+                                 checkbox) — dos <span> condicionados, mismo
+                                 patrón que desvio_jornada en la hoja de ruta. -->
+                            <field name="fue_vencido" invisible="1"/>
+                            <label for="fue_vencido" string="FUE"/>
+                            <div>
+                                <span class="badge text-bg-danger" invisible="not fue_vencido">Vencido</span>
+                                <span class="badge text-bg-success" invisible="fue_vencido">Al día</span>
+                            </div>
+                        </group>
+                        <group>
+                            <field name="fecha_ultima_cobranza" readonly="1"/>
+                            <field name="dias_sin_cobro" readonly="1"/>
+                            <field name="umbral_alerta_cobro"/>
+                            <field name="fuc_vencido" invisible="1"/>
+                            <label for="fuc_vencido" string="FUC"/>
+                            <div>
+                                <span class="badge text-bg-danger" invisible="not fuc_vencido">Vencido</span>
+                                <span class="badge text-bg-success" invisible="fuc_vencido">Al día</span>
+                            </div>
+                        </group>
+                    </group>
+                    <!-- 4.3 (revisión 29/09): pedido habitual con productos
+                         reales, en vez del texto libre de antes.
+                         insa_order_notes se deja de solo lectura al lado,
+                         de referencia (lo sigue llenando el alta web/app) —
+                         no se puede borrar sin romper esos dos canales. -->
+                    <separator string="Pedido habitual"/>
+                    <field name="insa_order_notes" readonly="1"
+                           placeholder="(sin observación del alta)"/>
+                    <field name="pedido_habitual_ids">
+                        <list editable="bottom">
+                            <field name="product_id"/>
+                            <field name="cantidad"/>
+                        </list>
+                    </field>
+                    <!-- Revisión 07/10: abonos (migrado de Water Service).
+                         Mientras un abono está activo, reemplaza al pedido
+                         habitual de arriba para los productos que cubre
+                         (ver _pedido_habitual_efectivo) — un producto puede
+                         venir de uno de los dos, nunca de ambos a la vez. -->
+                    <separator string="Abonos"/>
+                    <field name="abono_todos_ids">
+                        <list decoration-muted="not active" default_order="active desc, vigencia_desde desc">
+                            <field name="name"/>
+                            <field name="precio"/>
+                            <field name="vigencia_desde"/>
+                            <field name="vigencia_hasta"/>
+                            <field name="active" widget="boolean_toggle" string="Activo"/>
+                        </list>
+                        <form>
+                            <group>
+                                <group>
+                                    <field name="partner_id" invisible="1"/>
+                                    <field name="abono_tipo_id"/>
+                                    <field name="name"/>
+                                    <field name="precio"/>
+                                </group>
+                                <group>
+                                    <field name="vigencia_desde"/>
+                                    <field name="vigencia_hasta" readonly="1"/>
+                                    <field name="active" readonly="1"/>
+                                </group>
+                            </group>
+                            <button name="action_dar_de_baja" type="object"
+                                    string="Dar de baja" class="btn-secondary"
+                                    invisible="not active"
+                                    confirm="El abono queda en el historial, no se borra. ¿Continuar?"/>
+                            <field name="linea_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="cantidad_incluida"/>
+                                    <field name="cantidad_por_visita" readonly="1"/>
+                                    <field name="precio_excedente"/>
+                                    <field name="consumido_mes" readonly="1"/>
+                                    <field name="excedente_unidades" readonly="1"/>
+                                    <button name="action_vender_excedente" type="object"
+                                            string="Vender excedente" class="btn-link"
+                                            invisible="excedente_unidades &lt;= 0"/>
+                                </list>
+                            </field>
+                        </form>
+                    </field>
+                    <separator string="Saldo de envases"/>
+                    <field name="insa_saldo_envase_ids">
+                        <list editable="bottom" decoration-danger="cantidad_a_recuperar > 0">
+                            <field name="product_id"/>
+                            <field name="saldo"/>
+                            <field name="consumo_promedio"/>
+                            <field name="tolerancia"/>
+                            <field name="permitido"/>
+                            <field name="cantidad_a_recuperar"/>
+                            <!-- 4.6: a_favor no se ve en cantidad_a_recuperar
+                                 (recortada en cero a propósito). -->
+                            <field name="estado_saldo" widget="badge"
+                                   decoration-danger="estado_saldo == 'debe'"
+                                   decoration-info="estado_saldo == 'a_favor'"
+                                   decoration-success="estado_saldo == 'al_dia'"/>
+                        </list>
+                    </field>
+                </page>
+            </page>
+        </field>
+    </record>
+
+    <!-- RN-29: "agarro todos mis clientes que tengan la etiqueta de
+         empresa y quiero que me avise el sistema cuando pasen 30 días" —
+         el multi-edit nativo de Odoo (seleccionar filas + cambiar un
+         campo) ya resuelve "editable por modificación masiva por
+         etiqueta"; alcanza con que los umbrales estén en la lista de
+         Contactos, filtrando/agrupando por etiqueta antes de seleccionar. -->
+    <record id="view_partner_list_insa_fue_fuc" model="ir.ui.view">
+        <field name="name">res.partner.list.insa.fue.fuc</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <list position="inside">
+                <field name="umbral_alerta_entrega" optional="hide"/>
+                <field name="umbral_alerta_cobro" optional="hide"/>
+                <field name="fue_vencido" optional="hide" widget="boolean_toggle"/>
+                <field name="fuc_vencido" optional="hide" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+</odoo>

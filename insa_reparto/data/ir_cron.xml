@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Paso 1.12 / C-22-C-23: chequeo diario de FUE y FUC, con umbral
+         parametrizable por cliente (RN-29, ya no fijo en 30 días).
+         Dispara una actividad de Odoo por cliente vencido, y para FUE
+         además una oportunidad de recompra en CRM — el canal real de
+         notificación (push/email/WhatsApp) sigue sin confirmar, ver
+         "Preguntas para el cliente" del plan de trabajo. -->
+    <record id="ir_cron_check_fue" model="ir.cron">
+        <field name="name">INSA Reparto: chequeo FUE / FUC</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_check_fue()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

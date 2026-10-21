@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="formulario_alta_insa_template" name="Formulario de Alta - Insa">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure">
+                <div class="container o_insa_form_container">
+                    <style>
+                        .o_insa_form_container { max-width: 820px; margin: 40px auto; }
+                        .o_insa_card { background:#eef0f1; border-radius:18px; padding:32px; }
+                        .o_insa_card h4 { font-weight:700; color:#3a3f44; margin-top:24px; margin-bottom:12px; }
+                        .o_insa_card h4:first-child { margin-top:0; }
+                        .o_insa_field { border:none; border-radius:24px; padding:10px 18px; width:100%; background:#fff; }
+                        .o_insa_row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
+                        .o_insa_row > div { flex:1; min-width:200px; }
+                        .o_insa_error { color:#b71c1c; font-size:12px; margin:4px 0 0 18px; }
+                        .o_insa_title { text-align:center; font-weight:700; margin-bottom:24px; }
+                    </style>
+
+                    <div class="o_insa_card">
+                        <div class="o_insa_title">Formulario de Alta - Insa</div>
+
+                        <form action="/formulario-alta-insa/enviar" method="POST">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                            <h4>Datos de Contacto</h4>
+                            <div class="o_insa_row">
+                                <div>
+                                    <input type="text" class="o_insa_field" name="name" placeholder="Nombre y Apellido o razón Social *"
+                                           t-att-value="form_data.get('name')"/>
+                                    <div class="o_insa_error" t-if="errors.get('name')" t-esc="errors['name']"/>
+                                </div>
+                            </div>
+                            <div class="o_insa_row">
+                                <div>
+                                    <input type="email" class="o_insa_field" name="email" placeholder="Email principal"
+                                           t-att-value="form_data.get('email')"/>
+                                </div>
+                            </div>
+                            <div class="o_insa_row">
+                                <div style="flex:0 0 100px;">
+                                    <input type="text" class="o_insa_field" name="mobile_code" placeholder="Cód. *"
+                                           t-att-value="form_data.get('mobile_code')"/>
+                                </div>
+                                <div>
+                                    <input type="text" class="o_insa_field" name="mobile_number" placeholder="Celular *"
+                                           t-att-value="form_data.get('mobile_number')"/>
+                                    <div class="o_insa_error" t-if="errors.get('mobile_code') or errors.get('mobile_number')">Celular es obligatorio</div>
+                                </div>
+                            </div>
+                            <div class="o_insa_row">
+                                <div style="flex:0 0 100px;">
+                                    <input type="text" class="o_insa_field" name="phone_code" placeholder="Cód."
+                                           t-att-value="form_data.get('phone_code')"/>
+                                </div>
+                                <div>
+                                    <input type="text" class="o_insa_field" name="phone_number" placeholder="Alternativo"
+                                           t-att-value="form_data.get('phone_number')"/>
+                                </div>
+                            </div>
+
+                            <h4>Domicilio</h4>
+                            <div class="o_insa_row">
+                                <div>
+                                    <select class="o_insa_field" name="insa_city_id" id="insa_city_id">
+                                        <option value="">Ciudad o Barrio *</option>
+                                        <t t-foreach="cities" t-as="city">
+                                            <option t-att-value="city.id"
+                                                    t-att-selected="'selected' if str(city.id) == form_data.get('insa_city_id') else None"
+                                                    t-esc="city.name"/>
+                                        </t>
+                                    </select>
+                                    <div class="o_insa_error" t-if="errors.get('insa_city_id')" t-esc="errors['insa_city_id']"/>
+                                </div>
+                                <div>
+                                    <select class="o_insa_field" name="insa_street_id" id="insa_street_id">
+                                        <option value="">Calle *</option>
+                                        <t t-foreach="streets" t-as="street">
+                                            <option t-att-value="street.id"
+                                                    t-att-data-city="street.city_id.id"
+                                                    t-att-selected="'selected' if str(street.id) == form_data.get('insa_street_id') else None"
+                                                    t-esc="street.name"/>
+                                        </t>
+                                    </select>
+                                    <div class="o_insa_error" t-if="errors.get('insa_street_id')" t-esc="errors['insa_street_id']"/>
+                                </div>
+                            </div>
+                            <div class="o_insa_row">
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_street_number" placeholder="Número *"
+                                           t-att-value="form_data.get('insa_street_number')"/>
+                                    <div class="o_insa_error" t-if="errors.get('insa_street_number')" t-esc="errors['insa_street_number']"/>
+                                </div>
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_floor" placeholder="Piso"
+                                           t-att-value="form_data.get('insa_floor')"/>
+                                </div>
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_apartment" placeholder="Departamento"
+                                           t-att-value="form_data.get('insa_apartment')"/>
+                                </div>
+                            </div>
+                            <div class="o_insa_row">
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_tower" placeholder="Torre"
+                                           t-att-value="form_data.get('insa_tower')"/>
+                                </div>
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_block" placeholder="Manzana"
+                                           t-att-value="form_data.get('insa_block')"/>
+                                </div>
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_lot" placeholder="Lote"
+                                           t-att-value="form_data.get('insa_lot')"/>
+                                </div>
+                            </div>
+                            <div class="o_insa_row">
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_address_notes" placeholder="Referencias del domicilio"
+                                           t-att-value="form_data.get('insa_address_notes')"/>
+                                </div>
+                            </div>
+
+                            <h4>Datos Facturación</h4>
+                            <div class="o_insa_row">
+                                <div>
+                                    <select class="o_insa_field" name="insa_tax_condition">
+                                        <option value="consumidor_final">Consumidor Final</option>
+                                        <option value="responsable_inscripto">Responsable Inscripto</option>
+                                        <option value="monotributista">Monotributista</option>
+                                        <option value="exento">Exento</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <input type="text" class="o_insa_field" name="vat" placeholder="CUIT / DNI"
+                                           t-att-value="form_data.get('vat')"/>
+                                </div>
+                            </div>
+
+                            <h4>Pedidos u observaciones del cliente</h4>
+                            <div class="o_insa_row">
+                                <div>
+                                    <input type="text" class="o_insa_field" name="insa_order_notes" placeholder="Pedido u Observaciones"
+                                           t-att-value="form_data.get('insa_order_notes')"/>
+                                </div>
+                            </div>
+
+                            <!-- Placeholder visual de reCAPTCHA: todavía no está conectado a Google.
+                                 Se activa cuando se carguen Site Key / Secret Key en Ajustes. -->
+                            <div class="o_insa_row" style="align-items:center;">
+                                <div style="flex:0 0 auto;">
+                                    <input type="checkbox" disabled="disabled"/> No soy un robot (pendiente de activar)
+                                </div>
+                                <div style="flex:0 0 auto; margin-left:auto;">
+                                    <button type="submit" class="btn btn-secondary" style="border-radius:20px; padding:10px 28px;">Confirmar</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script type="text/javascript">
+                document.addEventListener('DOMContentLoaded', function () {
+                    var citySelect = document.getElementById('insa_city_id');
+                    var streetSelect = document.getElementById('insa_street_id');
+                    if (!citySelect || !streetSelect) { return; }
+                    var allOptions = Array.prototype.slice.call(streetSelect.options);
+                    function filterStreets() {
+                        var cityId = citySelect.value;
+                        streetSelect.innerHTML = '';
+                        allOptions.forEach(function (opt) {
+                            var cityAttr = opt.getAttribute('data-city');
+                            if (!cityAttr || !cityId || cityAttr === cityId) {
+                                streetSelect.appendChild(opt);
+                            }
+                        });
+                    }
+                    citySelect.addEventListener('change', filterStreets);
+                });
+            </script>
+        </t>
+    </template>
+
+    <template id="formulario_alta_insa_gracias_template" name="Formulario de Alta - Insa - Gracias">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure">
+                <div class="container" style="max-width:600px; margin:60px auto; text-align:center;">
+                    <h2>¡Gracias!</h2>
+                    <p>Tus datos fueron recibidos correctamente. Nos vamos a contactar a la brevedad.</p>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

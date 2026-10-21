@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_partner_form_autorizacion" model="ir.ui.view">
+        <field name="name">res.partner.form.autorizacion</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Botón para activar cliente propio (Caso 3) — solo en personas -->
+            <div name="button_box" position="inside">
+                <button name="action_activar_cliente_propio" type="object"
+                        class="oe_stat_button" icon="fa-user-plus"
+                        invisible="is_company or es_cliente_propio">
+                    <span class="o_stat_text">Activar cliente<br/>por derecho propio</span>
+                </button>
+            </div>
+
+            <!-- Autorizaciones de pedido: se integra dentro de la pestaña
+                 INSA - Reparto en vez de abrir una pestaña aparte, para no
+                 sumar más tabs de los necesarios. -->
+            <xpath expr="//page[@name='insa_reparto']" position="inside">
+                    <separator string="Autorizaciones de pedido"/>
+                    <group>
+                        <field name="es_cliente_propio" readonly="1"
+                               invisible="is_company"/>
+                        <field name="fsm_location_propia_id" readonly="1"
+                               invisible="is_company or not es_cliente_propio"/>
+                    </group>
+
+                    <!-- M-05 (reunión 14/09): "no aparecía la línea para
+                         agregar". Solo se mostraba en empresas (is_company),
+                         pero las cuentas Familia se migraron como persona
+                         (is_company = False): en una familia no había forma
+                         de cargar a quién se autoriza a pedir. Ahora se ve en
+                         toda cuenta — empresa o contacto principal sin
+                         empresa padre —; los contactos hijos siguen viendo
+                         solo la relación inversa. -->
+                    <separator string="Personas relacionadas (pueden pedir por esta cuenta)"
+                               invisible="not is_company and parent_id"/>
+                    <field name="autorizacion_pedido_ids" invisible="not is_company and parent_id"
+                           context="{'default_cuenta_id': id}">
+                        <kanban quick_create="false" records_draggable="false">
+                            <field name="persona_id"/>
+                            <field name="rol"/>
+                            <field name="activo"/>
+                            <field name="persona_phone"/>
+                            <field name="persona_mobile"/>
+                            <templates>
+                                <t t-name="kanban-box">
+                                    <div class="o_kanban_record d-flex align-items-center gap-2 p-2"
+                                         t-attf-class="#{!record.activo.raw_value ? 'opacity-50' : ''}"
+                                         style="min-width: 240px; cursor: pointer;">
+                                        <img t-att-src="kanban_image('res.partner', 'avatar_128', record.persona_id.raw_value)"
+                                             class="rounded-circle" alt="Avatar"
+                                             style="width:42px;height:42px;object-fit:cover;flex:0 0 auto;"/>
+                                        <div class="flex-grow-1 text-truncate">
+                                            <div class="fw-bold text-truncate">
+                                                <t t-esc="record.persona_id.value"/>
+                                            </div>
+                                            <div class="text-muted small text-truncate">
+                                                <t t-esc="record.rol.value"/>
+                                                <t t-if="!record.activo.raw_value"> · vencida</t>
+                                            </div>
+                                            <div class="text-muted small text-truncate"
+                                                 t-if="record.persona_mobile.value or record.persona_phone.value">
+                                                <t t-esc="record.persona_mobile.value or record.persona_phone.value"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </templates>
+                        </kanban>
+                    </field>
+
+                    <separator string="Empresas relacionadas (esta persona puede pedir para ellas)"
+                               invisible="is_company"/>
+                    <field name="autorizacion_como_persona_ids" invisible="is_company"
+                           context="{'default_persona_id': id}">
+                        <kanban quick_create="false" records_draggable="false">
+                            <field name="cuenta_id"/>
+                            <field name="rol"/>
+                            <field name="activo"/>
+                            <field name="cuenta_phone"/>
+                            <templates>
+                                <t t-name="kanban-box">
+                                    <div class="o_kanban_record d-flex align-items-center gap-2 p-2"
+                                         t-attf-class="#{!record.activo.raw_value ? 'opacity-50' : ''}"
+                                         style="min-width: 240px; cursor: pointer;">
+                                        <img t-att-src="kanban_image('res.partner', 'avatar_128', record.cuenta_id.raw_value)"
+                                             class="rounded-circle" alt="Avatar"
+                                             style="width:42px;height:42px;object-fit:cover;flex:0 0 auto;"/>
+                                        <div class="flex-grow-1 text-truncate">
+                                            <div class="fw-bold text-truncate">
+                                                <t t-esc="record.cuenta_id.value"/>
+                                            </div>
+                                            <div class="text-muted small text-truncate">
+                                                <t t-esc="record.rol.value"/>
+                                                <t t-if="!record.activo.raw_value"> · vencida</t>
+                                            </div>
+                                            <div class="text-muted small text-truncate" t-if="record.cuenta_phone.value">
+                                                <t t-esc="record.cuenta_phone.value"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </templates>
+                        </kanban>
+                    </field>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Limpieza visual de la ficha de contacto para INSA:
+         ocultar campos y pestañas que no se usan, y sumar Barrio a la
+         dirección. Depende de fieldservice / crm / base_geolocalize para
+         garantizar que sus nodos ya estén en el arch al aplicar estos xpath. -->
+    <record id="view_partner_form_insa_limpieza" model="ir.ui.view">
+        <field name="name">res.partner.form.insa.limpieza</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+
+            <!-- campos que son ruido para un cliente de agua -->
+            <field name="title" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="website" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <!-- INSA solo atiende clientes en Córdoba: no hace falta
+                 elegir idioma por contacto (ya viene es_AR por defecto). -->
+            <field name="lang" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+
+            <!-- Barrio en el bloque de dirección (Calle · Barrio · CP) -->
+            <field name="street2" position="after">
+                <field name="insa_city_id" placeholder="Barrio"/>
+            </field>
+
+            <!-- pestañas que INSA no usa -->
+            <xpath expr="//page[@name='geo_location']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='service_location_id']/ancestor::page[1]"
+                   position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- columna "Compras": INSA no compra a estos contactos -->
+            <xpath expr="//page[@name='sales_purchases']//group[@name='purchase']"
+                   position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- "Varios" (ID de la empresa, Referencia, Sitio web, Industria):
+                 ruido para un cliente de agua. La sección "Inventario" que
+                 aparece al lado (property_stock_customer/supplier, la agrega
+                 el módulo stock) sólo se ve con el grupo técnico "Funciones
+                 técnicas" activo — no la ven los usuarios normales, por eso
+                 no hace falta ocultarla acá. -->
+            <xpath expr="//page[@name='sales_purchases']//group[@name='misc']"
+                   position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- botones de estadística que no aplican -->
+            <xpath expr="//button[@name='schedule_meeting']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_view_opportunity']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Fusionar Ventas y compras dentro de Facturación: se copian
+                 los 4 campos útiles (vendedor, lista de precios, posición
+                 fiscal, ingresos brutos) a la pestaña de Facturación y se
+                 oculta la pestaña Ventas y compras (ya redundante). Solo en
+                 la variante "accounting" (cuenta propia); los contactos
+                 hijo usan "accounting_disabled" y no tienen condiciones
+                 comerciales propias, igual que ya pasa con
+                 property_product_pricelist. -->
+            <xpath expr="//page[@name='accounting']" position="inside">
+                <separator string="Ventas"/>
+                <group>
+                    <field name="user_id" widget="many2one_avatar_user"
+                           domain="[('share', '=', False)]"/>
+                    <field name="property_product_pricelist"
+                           invisible="not is_company and parent_id"/>
+                </group>
+                <separator string="Información fiscal"/>
+                <group>
+                    <field name="property_account_position_id"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <field name="l10n_ar_gross_income_type" class="oe_inline"/>
+                    <field name="l10n_ar_gross_income_number" placeholder="Number..."
+                           class="oe_inline"
+                           invisible="l10n_ar_gross_income_type not in ['multilateral', 'local']"
+                           required="l10n_ar_gross_income_type in ['multilateral', 'local']"/>
+                </group>
+            </xpath>
+            <xpath expr="//page[@name='sales_purchases']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- La ventanita compacta de "Dirección de entrega/factura/
+                 otra" (la que se abre al click en una tarjeta de
+                 Contactos y direcciones) NO es una vista aparte: es un
+                 <form> incrustado adentro del propio campo child_ids, acá
+                 mismo en base.view_partner_form. Ya trae "function" sin
+                 ninguna condición — solo le cambiamos la etiqueta para
+                 que quede claro que sirve para saber a quién avisar si
+                 hay un problema en esa dirección puntual. -->
+            <xpath expr="//field[@name='child_ids']//field[@name='function']"
+                   position="attributes">
+                <attribute name="string">Responsable en este punto</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Tarjeta de Contactos: el estado (Activo/Baja/Borrador/etc.) solo se
+         veía por la columna al agrupar el Kanban por "Estado (WS)" — sin
+         agrupar, o en lista, no había forma de saber el estado de un
+         vistazo. Se agrega como badge de color en la propia tarjeta. -->
+    <record id="view_partner_kanban_estado" model="ir.ui.view">
+        <field name="name">res.partner.kanban.insa.estado</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.res_partner_kanban_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='display_name']" position="after">
+                <field name="x_insa_estado_ws" widget="badge"
+                       decoration-success="x_insa_estado_ws == 'activo'"
+                       decoration-danger="x_insa_estado_ws == 'baja'"
+                       decoration-warning="x_insa_estado_ws in ('moroso', 'gestion_baja')"
+                       decoration-info="x_insa_estado_ws == 'borrador'"
+                       class="ms-1"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

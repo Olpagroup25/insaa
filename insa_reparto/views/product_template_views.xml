@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_insa" model="ir.ui.view">
+        <field name="name">product.template.form.insa</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <group name="inventory" position="after">
+                <group string="INSA - Reparto" name="insa_reparto">
+                    <field name="es_retornable"/>
+                    <field name="es_envase" invisible="es_retornable"/>
+                    <field name="envase_id" invisible="not es_retornable"/>
+                    <field name="tolerancia_envase" invisible="not es_retornable"/>
+                    <field name="visible_control_playa"/>
+                    <field name="exportable_movil"/>
+                    <field name="frecuente"/>
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="insa_repartidor_credencial_list" model="ir.ui.view">
+        <field name="name">insa.repartidor.credencial.list</field>
+        <field name="model">insa.repartidor.credencial</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="bloqueado_hasta" decoration-muted="not active">
+                <field name="login"/>
+                <field name="route_id"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="last_login"/>
+                <field name="bloqueado_hasta"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_repartidor_credencial_form" model="ir.ui.view">
+        <field name="name">insa.repartidor.credencial.form</field>
+        <field name="model">insa.repartidor.credencial</field>
+        <field name="arch" type="xml">
+            <form string="Credencial de reparto">
+                <header>
+                    <button name="action_abrir_wizard_set_password" type="object"
+                            string="Definir contraseña" class="oe_highlight"/>
+                    <button name="action_revocar_sesiones" type="object"
+                            string="Revocar sesiones"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="route_id"/>
+                        <field name="login" readonly="1"/>
+                        <field name="active"/>
+                    </group>
+                    <group string="Estado">
+                        <field name="last_login" readonly="1"/>
+                        <field name="intentos_fallidos" readonly="1"/>
+                        <field name="bloqueado_hasta" readonly="1"/>
+                        <field name="token_version" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="insa_repartidor_credencial_set_password_wizard_form" model="ir.ui.view">
+        <field name="name">insa.repartidor.credencial.set.password.wizard.form</field>
+        <field name="model">insa.repartidor.credencial.set.password.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Definir contraseña">
+                <field name="credencial_id" invisible="1"/>
+                <group>
+                    <field name="password" password="True" placeholder="Mínimo 6 caracteres"/>
+                </group>
+                <footer>
+                    <button name="action_confirmar" type="object" string="Confirmar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_insa_repartidor_credencial" model="ir.actions.act_window">
+        <field name="name">Credenciales de reparto (app)</field>
+        <field name="res_model">insa.repartidor.credencial</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

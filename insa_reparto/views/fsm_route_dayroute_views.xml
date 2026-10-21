@@ -1,0 +1,864 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="fsm_route_dayroute_form_insa" model="ir.ui.view">
+        <field name="name">fsm.route.dayroute.form.insa</field>
+        <field name="model">fsm.route.dayroute</field>
+        <field name="inherit_id" ref="fieldservice_route.fsm_route_dayroute_form"/>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="string">Hoja de ruta</attribute>
+            </form>
+            <!-- El statusbar nativo de OCA (stage_id, fsm.stage: "New" /
+                 "Closed", sin traducir) queda oculto — R-01 ya estableció
+                 "En reparto → Consolidando → Cerrado" (campo state, abajo)
+                 como el único estado visible de la hoja; mostrar los dos
+                 juntos es redundante y, al no estar traducido, confuso. -->
+            <field name="stage_id" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <!-- R-01 (14/09): En reparto → Consolidando → Cerrado. Los
+                 botones de declarar efectivo y finalizar viven en la
+                 pestaña Transacciones (R-04), que solo ve la administrativa
+                 de cierre. -->
+            <sheet position="before">
+                <header>
+                    <button name="action_recalcular_liquidacion" type="object" string="Recalcular liquidación"
+                            invisible="state == 'cerrada' or not control_entrada_aprobado"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+            </sheet>
+            <!-- 4.1 (revisión 29/09): person_id (fsm.person, de OCA) y
+                 repartidor_id (hr.employee, nuestro) mostraban la misma
+                 info duplicada. person_id sigue existiendo por dentro —
+                 OCA lo exige para guardar, aunque no required (ver abajo:
+                 sin él, ningún botón funciona, tampoco "Finalizar
+                 reparto") y se recalcula solo desde route_id — pero deja
+                 de mostrarse: el único campo visible es repartidor_id,
+                 que además es el que puede diferir del titular habitual
+                 de la ruta (reemplazos/suplentes). -->
+            <field name="person_id" position="attributes">
+                <attribute name="required">0</attribute>
+                <attribute name="invisible">1</attribute>
+            </field>
+            <group id="left" position="inside">
+                <field name="reparto_numero"/>
+                <field name="dia_semana" readonly="1"/>
+                <field name="vehiculo_id"/>
+                <label for="repartidor_id"/>
+                <div class="d-flex align-items-center gap-2">
+                    <field name="repartidor_id" nolabel="1"/>
+                    <button name="action_abrir_credencial_ruta" type="object"
+                            string="Credencial de la app" class="btn-link p-0"
+                            icon="fa-key"
+                            help="La credencial de login es de la Ruta, no cambia si cambia quién maneja."/>
+                </div>
+                <field name="tiene_diferencias"/>
+                <field name="control_salida_aprobado" invisible="1"/>
+                <field name="control_entrada_aprobado" invisible="1"/>
+                <field name="close_forced" invisible="1"/>
+            </group>
+            <!-- C-10: timestamps de los controles, pantallazo operativo del
+                 día ("si mi reparto uno tiene diez horas de viaje y acá me
+                 aparece que tardó quince, vamos a poder identificar
+                 anormalidades"). -->
+            <group id="right" position="inside">
+                <field name="hora_salida" readonly="1"/>
+                <field name="hora_entrada" readonly="1"/>
+                <field name="duracion_jornada" readonly="1" widget="float_time"/>
+                <!-- C-11: se ve solo cuando hay algo con qué comparar
+                     (work_time > 0) — mientras no vuelva el formulario de
+                     relevamiento (V-14), esto queda en blanco a propósito.
+                     Dos <field> del mismo campo, uno con estilo de alerta,
+                     para no depender de decoration-* (no aplica fuera de
+                     listas/kanban). -->
+                <field name="desvio_jornada" readonly="1" widget="float_time"
+                       invisible="not work_time or tiene_desvio"/>
+                <field name="desvio_jornada" readonly="1" widget="float_time"
+                       class="text-danger fw-bold" invisible="not tiene_desvio"/>
+                <field name="tiene_desvio" invisible="1"/>
+            </group>
+            <xpath expr="//notebook" position="before">
+                <div class="alert alert-warning mb-2" role="alert"
+                     invisible="control_salida_aprobado or state == 'cerrada'">
+                    El control de salida todavía no fue aprobado por un
+                    controlador de playa: hasta entonces no se registran visitas
+                    (R-09).
+                </div>
+                <div class="alert alert-info mb-2" role="alert">
+                    Pestañas (revisión 03/10): <b>Control de playa</b>
+                    (selector Salida/Entrada) → <b>Transacciones</b>
+                    (declaración de efectivo y cierre, solo la administrativa
+                    de cierre) → <b>Pedidos</b> (fusiona pedido programado y
+                    visita, una fila por cliente) → <b>Liquidación</b> (la
+                    parte del controlador de playa). Después, las de apoyo:
+                    Préstamos y devoluciones e Indicadores (con Planificación
+                    adentro, a modo de reportería).
+                </div>
+            </xpath>
+            <!-- Paso 1.14: fsm.order no declara _order propio (default
+                 Odoo = 'id'), así que arrastrar con el handle de
+                 'sequence' actualiza el valor pero no persiste
+                 visualmente al recargar — se reordena por id de nuevo.
+                 Se fuerza el orden acá, en nuestra vista, sin tocar el
+                 modelo base de OCA (podría afectar otras vistas del
+                 paquete field-service que no controlamos). -->
+            <xpath expr="//field[@name='order_ids']/list" position="attributes">
+                <attribute name="default_order">sequence</attribute>
+            </xpath>
+            <!-- 4.2 (revisión 29/09): completar en bloque los pedidos que
+                 siguen en "Nuevo" — reusa action_complete, el mismo método
+                 nativo de OCA que ya usan los botones por fila. Solo
+                 mientras la hoja está "En reparto": antes no tiene sentido
+                 (no empezó), después ya pasó esa etapa. -->
+            <xpath expr="//field[@name='order_ids']" position="before">
+                <div class="d-flex align-items-center gap-2 mb-2"
+                     invisible="state != 'en_reparto' or num_pedidos_pendientes == 0">
+                    <button name="action_completar_todos_los_pendientes" type="object"
+                            string="Completar todos los pendientes" class="btn-primary"
+                            confirm="Esto va a marcar como completados todos los pedidos que siguen en 'Nuevo'. ¿Confirmás?"/>
+                    <field name="num_pedidos_pendientes" readonly="1"/>
+                    <span>pendientes</span>
+                </div>
+            </xpath>
+            <!-- Revisión 03/10: fusión de Pedidos + Visitas pedida por el
+                 cliente ("pedidos es un estado donde vemos si el cliente
+                 realizó el pedido o no, y las visitas también están
+                 asociadas al cliente... la fusión de visitas con
+                 pedidos") — una fila por cliente, con lo que pedía y lo
+                 que realmente pasó. order_ids (nativo de OCA) sigue
+                 existiendo por dentro (lo sigue usando
+                 action_completar_todos_los_pendientes y el cómputo de
+                 Indicadores), pero ya no se muestra: mostrar las dos
+                 listas por separado era la "contradicción" que el
+                 cliente señaló (datos del mismo cliente partidos en dos
+                 pantallas distintas). Ver insa_pedido_visita.py. -->
+            <xpath expr="//field[@name='order_ids']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_ids']" position="after">
+                <p class="text-muted">
+                    Una fila por cliente: si tiene pedido programado, si ya
+                    fue visitado y qué pasó. Las <b>Extra</b> (C-03: cliente
+                    de otro día, alta rápida, venta puntual) aparecen igual,
+                    sin pedido programado. Click en "Abrir" para cargar o ver
+                    el detalle de la visita.
+                </p>
+                <field name="pedido_visita_ids" readonly="state == 'cerrada'">
+                    <list create="false" delete="false" default_order="sequence"
+                          decoration-muted="not visitado and not resultado and not tiene_visita"
+                          decoration-info="es_extra">
+                        <field name="sequence"/>
+                        <field name="partner_id"/>
+                        <field name="tiene_pedido" widget="boolean_toggle" string="Pedido"/>
+                        <field name="pedido_stage_id" optional="hide"/>
+                        <field name="es_extra" widget="boolean_toggle" string="Extra"/>
+                        <field name="origen_extra" invisible="not es_extra"/>
+                        <field name="iconos_visita" string="Íconos"/>
+                        <field name="visitado" widget="boolean_toggle"/>
+                        <field name="resultado" widget="badge"
+                               decoration-warning="resultado == 'ausente'"
+                               decoration-danger="resultado == 'sin_gestion'"
+                               decoration-info="resultado == 'repaso'"/>
+                        <field name="medio_pago" optional="hide"/>
+                        <field name="cobro_efectivo"/>
+                        <button name="action_abrir_visita" type="object" string="Abrir"
+                                class="btn-link"/>
+                    </list>
+                </field>
+            </xpath>
+            <!-- Paso 1.5: unificar "Orders" (paradas programadas, nativo de
+                 OCA) y "Pedidos extra" (insa.pedido.extra, RN-17) en una
+                 sola pestaña. Se selecciona la pestaña vía ancestor::page
+                 de un campo que solo existe ahí adentro (order_ids) — Odoo
+                 prohíbe usar @string como selector de herencia de vistas. -->
+            <xpath expr="//field[@name='order_ids']/ancestor::page[1]" position="inside">
+                <separator string="Pedidos extra (RN-17)"/>
+                <p class="text-muted">
+                    Pedidos fuera de ruta que administración inyecta con la
+                    hoja de ruta ya en curso.
+                </p>
+                <field name="pedido_extra_ids" readonly="state == 'cerrada'">
+                    <list decoration-success="atendido" decoration-warning="not atendido">
+                        <field name="fecha_hora"/>
+                        <field name="partner_id"/>
+                        <field name="resumen"/>
+                        <field name="creado_por_id"/>
+                        <field name="atendido" widget="boolean_toggle"/>
+                    </list>
+                    <form>
+                        <group>
+                            <group>
+                                <field name="partner_id"/>
+                                <field name="fecha_hora"/>
+                            </group>
+                            <group>
+                                <field name="creado_por_id"/>
+                                <field name="atendido"/>
+                            </group>
+                        </group>
+                        <!-- Solo productos que se pueden vender (sin envases):
+                             el dominio está en insa.pedido.extra.linea. -->
+                        <field name="linea_ids">
+                            <list editable="bottom">
+                                <field name="product_id"/>
+                                <field name="cantidad"/>
+                            </list>
+                        </field>
+                    </form>
+                </field>
+            </xpath>
+            <xpath expr="//field[@name='order_ids']/ancestor::page[1]" position="attributes">
+                <attribute name="string">Pedidos</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date_start_planned']/ancestor::page[1]" position="attributes">
+                <attribute name="string">Planificación</attribute>
+            </xpath>
+
+            <!-- Control de playa y Transacciones van antes de "Pedidos"
+                 (la pestaña nativa de OCA); Liquidación va después (ver
+                 más abajo) — reformulación del cliente del 03/10:
+                 "control de playa de salida" es una pestaña, "la fusión
+                 de visitas con pedidos" otra muy distinta, "al final de
+                 nuestras ventas, la liquidación". -->
+            <xpath expr="//field[@name='order_ids']/ancestor::page[1]" position="before">
+                <!-- Revisión 03/10: Entrada y Salida fusionadas en un solo
+                     tab con selector — antes eran pestañas separadas y
+                     cada una tenía su propio botón nativo "Guardar y
+                     crear nuevo" que permitía intentar un segundo control
+                     del mismo tipo y chocar con unique(hoja_ruta_id,
+                     tipo) (el error de validación que vio el cliente).
+                     Mismo patrón que ya se usaba para salida: un Many2one
+                     computado al único control de cada tipo, con sus
+                     líneas mostradas directo vía campo related — así
+                     nunca se ofrece crear un segundo registro. -->
+                <page string="Control de playa" name="insa_control_playa">
+                    <p class="text-muted">
+                        Salida: lo que se carga al camión, solo
+                        <b>llenos</b> (R-05). Entrada: lo que vuelve —
+                        llenos, vacíos y fallados (C-05). Con la
+                        aprobación del controlador de cada uno se calcula
+                        la liquidación.
+                    </p>
+                    <field name="control_playa_vista" widget="radio" options="{'horizontal': true}"/>
+                    <field name="control_salida_id" invisible="1"/>
+                    <field name="control_salida_state" invisible="1"/>
+                    <div invisible="control_playa_vista != 'salida'">
+                        <div class="d-flex align-items-center gap-2 mb-2"
+                             invisible="state == 'cerrada'">
+                            <button name="action_aprobar_control_salida" type="object"
+                                    string="Aprobar control de salida" class="oe_highlight"
+                                    invisible="control_salida_state != 'borrador'"/>
+                            <button name="action_volver_a_borrador_control_salida" type="object"
+                                    string="Volver control de salida a borrador"
+                                    invisible="control_salida_state != 'confirmado'"
+                                    groups="insa_reparto.group_supervisor,insa_reparto.group_administrativa_cierre"
+                                    confirm="Esto anula la aprobación del controlador y habilita a corregir el conteo. ¿Continuar?"/>
+                            <field name="control_salida_state" nolabel="1" widget="badge"
+                                   decoration-warning="control_salida_state == 'borrador'"
+                                   decoration-success="control_salida_state == 'confirmado'"/>
+                        </div>
+                        <!-- Revisión 06/10: vuelve a ser una sola tabla
+                             (se retira el split habitual/extra del
+                             05/10 — "evaluando junto con la app veo que
+                             no es viable tener la sección extra"). "A
+                             cargar (pedidos)" sigue precargándose sola
+                             desde el pedido habitual (4.4); lo que
+                             cambia es la restricción: "Llenos" no puede
+                             bajar de esa referencia (ver
+                             _check_salida_cubre_pedidos en el modelo) —
+                             se puede cargar más por encima (para una
+                             venta espontánea, cambio, etc.) agregando
+                             más líneas o subiendo la cantidad, pero
+                             nunca menos de lo que piden los clientes de
+                             hoy. -->
+                        <field name="control_salida_linea_ids"
+                               readonly="control_salida_state == 'confirmado' or state == 'cerrada'">
+                            <list editable="bottom">
+                                <field name="tipo" column_invisible="1"/>
+                                <field name="product_id"/>
+                                <field name="a_cargar_pedidos"/>
+                                <field name="cantidad" sum="Llenos"/>
+                            </list>
+                        </field>
+                    </div>
+                    <field name="control_entrada_id" invisible="1"/>
+                    <field name="control_entrada_state" invisible="1"/>
+                    <div invisible="control_playa_vista != 'entrada'">
+                        <div class="d-flex align-items-center gap-2 mb-2"
+                             invisible="state == 'cerrada'">
+                            <button name="action_crear_control_entrada" type="object"
+                                    string="Iniciar control de entrada" class="btn-primary"
+                                    invisible="control_entrada_id"/>
+                            <button name="action_aprobar_control_entrada" type="object"
+                                    string="Aprobar control de entrada" class="oe_highlight"
+                                    invisible="not control_entrada_id or control_entrada_state != 'borrador'"/>
+                            <button name="action_volver_a_borrador_control_entrada" type="object"
+                                    string="Volver control de entrada a borrador"
+                                    invisible="control_entrada_state != 'confirmado'"
+                                    groups="insa_reparto.group_supervisor,insa_reparto.group_administrativa_cierre"
+                                    confirm="Esto anula la aprobación del controlador y habilita a corregir el conteo. ¿Continuar?"/>
+                            <field name="control_entrada_state" nolabel="1" widget="badge"
+                                   decoration-warning="control_entrada_state == 'borrador'"
+                                   decoration-success="control_entrada_state == 'confirmado'"/>
+                        </div>
+                        <field name="control_entrada_linea_ids"
+                               invisible="not control_entrada_id"
+                               readonly="control_entrada_state == 'confirmado' or state == 'cerrada'">
+                            <list editable="bottom">
+                                <field name="tipo" column_invisible="1"/>
+                                <field name="product_id"/>
+                                <field name="cantidad_salida" readonly="1"/>
+                                <field name="cantidad" sum="Llenos"/>
+                                <field name="cantidad_vacia"/>
+                                <field name="cantidad_fallada"/>
+                            </list>
+                        </field>
+                    </div>
+                </page>
+                <!-- R-04 / 4.7: el repartidor deposita el efectivo en un
+                     cajero de depósito, recibe un ticket con el detalle de
+                     billetes y se lo lleva; la administrativa lo declara
+                     acá. El controlador de playa hace el segundo control
+                     (verificación), independiente — por eso la pestaña ya
+                     no es exclusiva de un solo grupo, cada botón se
+                     restringe por su cuenta. El detalle de Efectivo se ve
+                     en Liquidación. -->
+                <page string="Transacciones" name="insa_transacciones">
+                    <div class="alert alert-info" role="alert"
+                         invisible="control_entrada_aprobado or state == 'cerrada'">
+                        El efectivo se declara con el control de entrada ya
+                        aprobado.
+                    </div>
+                    <div class="d-flex gap-2 mb-3" invisible="state == 'cerrada'">
+                        <button name="action_abrir_wizard_declarar_efectivo" type="object"
+                                string="Declarar efectivo" class="btn-primary"
+                                groups="insa_reparto.group_administrativa_cierre"
+                                invisible="state != 'en_reparto' or not control_entrada_aprobado"/>
+                        <button name="action_abrir_wizard_declarar_efectivo" type="object"
+                                string="Corregir efectivo declarado" class="btn-secondary"
+                                groups="insa_reparto.group_administrativa_cierre"
+                                invisible="state != 'consolidando'"/>
+                        <!-- 4.7: lo abre la administrativa (mismo
+                             mostrador), y el controlador acredita su
+                             identidad adentro del wizard con usuario y
+                             contraseña — mismo patrón que la aprobación
+                             del control de playa (C-08/C-09). -->
+                        <button name="action_abrir_wizard_verificar_efectivo" type="object"
+                                string="Verificar efectivo" class="btn-secondary"
+                                groups="insa_reparto.group_administrativa_cierre"
+                                invisible="state != 'consolidando'"/>
+                        <button name="action_finalizar_reparto" type="object"
+                                string="Finalizar reparto" class="btn-primary"
+                                groups="insa_reparto.group_administrativa_cierre"
+                                invisible="state != 'consolidando'"
+                                confirm="Esto confirma en bloque las ventas (pedidos de venta), los movimientos de envase y el FUE/FUC de todos los clientes del reparto. Si hay diferencias, se piden los motivos. ¿Continuar?"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         groups="insa_reparto.group_administrativa_cierre"
+                         invisible="state != 'consolidando' or controlador_verifico_por_id">
+                        Falta la verificación de un controlador de playa
+                        (segundo control) para poder finalizar.
+                    </div>
+                    <!-- R-07: autorización de cierre con diferencia y diario
+                         de pérdidas. -->
+                    <div invisible="not close_forced">
+                        <separator string="Cierre con diferencias"/>
+                        <group>
+                            <field name="close_forced_reason"/>
+                            <field name="close_forced_by"/>
+                            <field name="close_forced_date"/>
+                        </group>
+                        <separator string="Pérdidas registradas"/>
+                        <field name="perdida_ids">
+                            <list create="false" delete="false">
+                                <field name="tipo"/>
+                                <field name="product_id"/>
+                                <field name="cantidad"/>
+                                <field name="importe" sum="Total"/>
+                                <field name="motivo_id"/>
+                                <field name="observacion"/>
+                            </list>
+                        </field>
+                        <separator string="Ajustes de inventario generados (R-6.4)"/>
+                        <field name="ajuste_inventario_ids">
+                            <list create="false" edit="false" delete="false">
+                                <field name="tipo" widget="badge"
+                                       decoration-info="tipo == 'articulo'"
+                                       decoration-warning="tipo == 'envase'"/>
+                                <field name="product_id"/>
+                                <field name="diferencia"/>
+                                <field name="stock_move_id"/>
+                            </list>
+                        </field>
+                    </div>
+                </page>
+            </xpath>
+            <!-- Liquidación va después de Pedidos (revisión 03/10: "al
+                 final de nuestras ventas, la liquidación"). -->
+            <xpath expr="//field[@name='order_ids']/ancestor::page[1]" position="after">
+                <page string="Liquidación" name="insa_liquidacion">
+                    <!-- R-04: la parte del controlador de playa — controles,
+                         artículos y envases, diferencias. El efectivo pasó a
+                         Transacciones. RN-23 (C-08): "recién ahí la
+                         liquidación nos arroja cómo quedaron las ventas y
+                         las devoluciones". -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="control_entrada_aprobado or state == 'cerrada'">
+                        El control de playa de <b>entrada</b> todavía no fue
+                        aprobado por un controlador: la liquidación todavía no
+                        arroja resultados.
+                    </div>
+                    <!-- 4.8: resumen superior, semáforo por sección — se ve
+                         de un vistazo si hay algo para revisar sin entrar a
+                         cada cuadro. No cambia ninguna fórmula, solo lee lo
+                         que ya calculan estado/diferencia_texto. El botón
+                         "Ver diferencias" abre la pantalla aparte de cada
+                         sección, ya filtrada a esta hoja y a "Con
+                         diferencias" — el único lugar donde ese filtro
+                         funciona de verdad (ver nota en el modelo). -->
+                    <div class="d-flex gap-4 mb-3"
+                         invisible="not control_entrada_aprobado and state != 'cerrada'">
+                        <!-- 4.7: Efectivo primero, mismo orden del pedido
+                             (Efectivo → Artículos → Envases). El detalle
+                             está más abajo, en esta misma pestaña. -->
+                        <div>
+                            <strong>Efectivo</strong><br/>
+                            <field name="resumen_efectivo" nolabel="1"/>
+                        </div>
+                        <div>
+                            <strong>Artículos</strong><br/>
+                            <field name="resumen_articulos" nolabel="1"/>
+                            <button name="action_ver_diferencias_articulos" type="object"
+                                    string="Ver diferencias" class="btn-link p-0 d-block"
+                                    invisible="resumen_articulos == '✔ Conciliado'"/>
+                        </div>
+                        <div>
+                            <strong>Envases</strong><br/>
+                            <field name="resumen_envases" nolabel="1"/>
+                            <button name="action_ver_diferencias_envases" type="object"
+                                    string="Ver diferencias" class="btn-link p-0 d-block"
+                                    invisible="resumen_envases == '✔ Conciliado'"/>
+                        </div>
+                        <div>
+                            <strong>Fallados</strong><br/>
+                            <field name="resumen_fallados" nolabel="1"/>
+                            <button name="action_ver_diferencias_fallados" type="object"
+                                    string="Ver diferencias" class="btn-link p-0 d-block"
+                                    invisible="resumen_fallados == '✔ Conciliado'"/>
+                        </div>
+                    </div>
+                    <group>
+                        <!-- C-16: "si todos los días me está prestando envase
+                             y sus ventas no lo justifican, quiere decir
+                             mucho dinero en la calle". -->
+                        <field name="ratio_prestamos_ventas" widget="float"
+                               help="Propuesta nuestra (no pedida textualmente): validar con Nico antes de darla por definitiva."/>
+                    </group>
+                    <!-- Orden de columnas que lee como cuenta: Salida −
+                         Entrada = Teórico entregado ↔ Registrado →
+                         Diferencia (4.8). Listas de solo lectura: sin
+                         create/delete/edit no abren el formulario modal
+                         autogenerado por fila, mismo patrón que
+                         movimiento_cobro_efectivo_ids. -->
+                    <!-- 4.7: cuadro de Efectivo, primero — se movió acá
+                         desde Transacciones (que ahora solo tiene los
+                         botones de acción). Tres cifras: lo registrado en
+                         las visitas, lo que declaró la administrativa y
+                         lo que contó el controlador (segundo control,
+                         independiente). -->
+                    <separator string="Efectivo"/>
+                    <group>
+                        <group string="Tres controles">
+                            <field name="total_efectivo_registrado" string="Registrado en visitas"/>
+                            <field name="total_gastos" string="Gastos del repartidor"/>
+                            <field name="efectivo_caja_repartidor" string="Declarado (Administrativa)"/>
+                            <field name="efectivo_contado_controlador" string="Contado (Controlador)"/>
+                        </group>
+                        <group string="Diferencias">
+                            <field name="diferencia_efectivo" string="Registrado vs. declarado"
+                                   class="text-danger fw-bold" invisible="diferencia_efectivo == 0"/>
+                            <field name="diferencia_efectivo" string="Registrado vs. declarado"
+                                   invisible="diferencia_efectivo != 0"/>
+                            <field name="diferencia_efectivo_controlador" string="Declarado vs. contado"
+                                   class="text-danger fw-bold" invisible="diferencia_efectivo_controlador == 0"/>
+                            <field name="diferencia_efectivo_controlador" string="Declarado vs. contado"
+                                   invisible="diferencia_efectivo_controlador != 0"/>
+                        </group>
+                        <group string="Declaración (Administrativa)">
+                            <field name="efectivo_declarado_por_id"/>
+                            <field name="efectivo_declarado_fecha"/>
+                        </group>
+                        <group string="Verificación (Controlador)">
+                            <field name="controlador_verifico_por_id"/>
+                            <field name="controlador_verifico_fecha"/>
+                        </group>
+                    </group>
+                    <separator string="Ticket del cajero, por denominación (Administrativa)"/>
+                    <field name="declaracion_efectivo_ids">
+                        <list create="false" delete="false">
+                            <field name="denominacion"/>
+                            <field name="cantidad"/>
+                            <field name="subtotal" sum="Total declarado"/>
+                        </list>
+                    </field>
+                    <separator string="Conteo del controlador, por denominación"/>
+                    <field name="declaracion_efectivo_controlador_ids">
+                        <list create="false" delete="false">
+                            <field name="denominacion"/>
+                            <field name="cantidad"/>
+                            <field name="subtotal" sum="Total contado"/>
+                        </list>
+                    </field>
+                    <!-- RN-10/C-04: solo entra acá lo que efectivamente es
+                         efectivo — un cobro en cheque/transferencia se ve en
+                         la pestaña Pedidos, pero no infla este cuadro. -->
+                    <separator string="Cobros en efectivo del día"/>
+                    <field name="movimiento_cobro_efectivo_ids">
+                        <list create="false" edit="false" delete="false">
+                            <field name="partner_id"/>
+                            <field name="es_extra" widget="boolean_toggle" string="Extra"/>
+                            <field name="cobro_efectivo" sum="Efectivo cobrado"/>
+                        </list>
+                    </field>
+                    <!-- Revisión 06/10: gastos cargados desde la app
+                         (combustible, peaje, comida, estacionamiento,
+                         mantenimiento, otro) — se restan del efectivo
+                         esperado arriba (ver "Gastos del repartidor").
+                         Acá el detalle, con el comprobante, para
+                         conciliar uno por uno. -->
+                    <separator string="Gastos del repartidor"/>
+                    <field name="gasto_ids">
+                        <list create="false" edit="false" delete="false">
+                            <field name="fecha_hora"/>
+                            <field name="tipo" widget="badge"/>
+                            <field name="importe" sum="Total gastos"/>
+                            <field name="observacion" optional="hide"/>
+                        </list>
+                        <form>
+                            <group>
+                                <field name="tipo"/>
+                                <field name="importe"/>
+                                <field name="fecha_hora"/>
+                                <field name="observacion"/>
+                            </group>
+                            <field name="comprobante" widget="image" class="oe_avatar"/>
+                        </form>
+                    </field>
+                    <separator string="Artículos"/>
+                    <field name="liquidacion_articulo_ids">
+                        <list class="o_insa_liquidacion_row" decoration-warning="estado == 'revisar'"
+                              create="false" edit="false" delete="false">
+                            <field name="product_id"/>
+                            <field name="salida"/>
+                            <field name="entrada"/>
+                            <field name="teorico"/>
+                            <field name="registrado" class="fw-bold"/>
+                            <field name="diferencia_texto" string="Diferencia"/>
+                            <field name="estado" widget="badge"
+                                   decoration-success="estado == 'ok'"
+                                   decoration-warning="estado == 'revisar'"/>
+                        </list>
+                    </field>
+                    <separator string="Envases"/>
+                    <field name="liquidacion_envase_ids">
+                        <list class="o_insa_liquidacion_row" decoration-warning="estado == 'revisar'"
+                              create="false" edit="false" delete="false">
+                            <field name="product_id"/>
+                            <field name="salida"/>
+                            <field name="prestamos" class="fw-bold"/>
+                            <field name="devoluciones" class="fw-bold"/>
+                            <field name="entrada_teorica"/>
+                            <field name="entrada_real"/>
+                            <field name="diferencia_texto" string="Diferencia"/>
+                            <field name="estado" widget="badge"
+                                   decoration-success="estado == 'ok'"
+                                   decoration-warning="estado == 'revisar'"/>
+                        </list>
+                    </field>
+                    <!-- C-07: el tercer cuadro. Cruza lo que el repartidor
+                         dijo que le devolvieron contra lo que el controlador
+                         contó como fallado al volver el camión. -->
+                    <separator string="Producto no conforme (fallados)"/>
+                    <field name="tiene_discordancia_fallados" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not tiene_discordancia_fallados">
+                        Discordancia entre la información del distribuidor y el
+                        control de playa.
+                    </div>
+                    <field name="liquidacion_fallado_ids">
+                        <list class="o_insa_liquidacion_row" decoration-warning="estado == 'revisar'"
+                              create="false" edit="false" delete="false">
+                            <field name="product_id"/>
+                            <field name="registrados"/>
+                            <field name="contados"/>
+                            <field name="diferencia_texto" string="Diferencia"/>
+                            <field name="estado" widget="badge"
+                                   decoration-success="estado == 'ok'"
+                                   decoration-warning="estado == 'revisar'"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+            <!-- Apoyo, entre "Pedidos" y "Planificación". -->
+            <xpath expr="//field[@name='date_start_planned']/ancestor::page[1]" position="before">
+                <page string="Préstamos y devoluciones" name="insa_prestamos_devoluciones">
+                    <p class="text-muted">
+                        C-13: <b>todos</b> los movimientos de envase del
+                        reparto, cliente por cliente — tenga o no alerta previa
+                        de deuda. Textual del cliente: "yo quiero saber cuánto
+                        se llevaron, cuánto me trajeron, qué me prestaron y qué
+                        me devolvieron, en una misma información".
+                    </p>
+                    <p class="text-muted">
+                        <span class="badge text-bg-success">Verde</span>
+                        devolvió y quedó sin deuda ·
+                        <span class="badge text-bg-danger">Rojo</span>
+                        deuda de envases pendiente de recuperar. Click en una
+                        fila para ver el detalle de líneas de esa visita.
+                    </p>
+                    <field name="movimiento_envase_ids">
+                        <list create="false" delete="false"
+                              decoration-success="devuelto_envase and not deuda_resultante_envase"
+                              decoration-danger="deuda_resultante_envase > 0">
+                            <field name="partner_id"/>
+                            <field name="envases_texto" string="Envase"/>
+                            <field name="prestado_envase" string="Prestados"/>
+                            <field name="devuelto_envase" string="Devueltos"/>
+                            <field name="deuda_previa_envase" string="Deuda previa"/>
+                            <field name="deuda_resultante_envase" string="Deuda resultante"/>
+                            <field name="fecha_hora"/>
+                        </list>
+                    </field>
+                </page>
+                <!-- C-17 / R-09: resumen gráfico del movimiento del día. Solo
+                     cuenta clientes de la ruta fija del día (order_ids); las
+                     visitas extra (C-03) no entran acá. El tablero
+                     transversal queda para el módulo Tableros. -->
+                <page string="Indicadores" name="insa_indicadores">
+                    <p class="text-muted">
+                        "Visitado" es cualquier gestión cargada — venta,
+                        ausente o sin gestión — no necesariamente una visita
+                        física (RN-18).
+                    </p>
+                    <group>
+                        <group string="Cartera del día">
+                            <field name="total_clientes"/>
+                            <field name="visitados_count"/>
+                            <field name="visitados_pct" widget="percentage"/>
+                            <field name="pendientes_count"/>
+                        </group>
+                        <group string="Qué se cargó">
+                            <field name="con_venta_count"/>
+                            <field name="ausentes_count"/>
+                            <field name="sin_gestion_count"/>
+                            <field name="con_cobro_count"/>
+                            <field name="con_mov_envase_count"/>
+                        </group>
+                    </group>
+                    <!-- Revisión 03/10: Planificación (C-11) pasa a ser una
+                         subsección de reportería acá adentro, en vez de su
+                         propia pestaña — misma info, solo de lectura. La
+                         pestaña nativa de OCA ("Planning"/"Planificación")
+                         sigue existiendo por dentro (ahí se cargan
+                         work_time/start_location_id/end_location_id) pero
+                         queda oculta del tabbar, ver más abajo. -->
+                    <separator string="Planificación"/>
+                    <group>
+                        <group string="Previsto">
+                            <field name="work_time"/>
+                            <field name="start_location_id"/>
+                            <field name="end_location_id"/>
+                        </group>
+                        <group string="Real del día">
+                            <field name="hora_salida"/>
+                            <field name="hora_entrada"/>
+                            <field name="duracion_jornada" widget="float_time"/>
+                            <field name="desvio_jornada" widget="float_time"
+                                   invisible="not work_time"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            <!-- La pestaña nativa de Planificación queda oculta: su
+                 contenido ahora se reporta, de solo lectura, adentro de
+                 Indicadores (arriba) — pero sigue siendo donde se carga
+                 work_time/start_location_id/end_location_id (ver create(),
+                 C-11), así que no se borra, solo no se muestra como tab
+                 aparte. -->
+            <xpath expr="//field[@name='date_start_planned']/ancestor::page[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="fsm_route_dayroute_list_insa" model="ir.ui.view">
+        <field name="name">fsm.route.dayroute.list.insa</field>
+        <field name="model">fsm.route.dayroute</field>
+        <field name="inherit_id" ref="fieldservice_route.fsm_route_dayroute_list"/>
+        <field name="arch" type="xml">
+            <list position="attributes">
+                <attribute name="decoration-warning">tiene_diferencias</attribute>
+            </list>
+            <!-- Mismo criterio que en el form: stage_id (OCA, "New"/
+                 "Closed" sin traducir) no se usa — state es el estado
+                 oficial desde R-01. -->
+            <field name="stage_id" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </field>
+            <field name="stage_id" position="after">
+                <field name="reparto_numero"/>
+                <field name="repartidor_id"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'en_reparto'"
+                       decoration-warning="state == 'consolidando'"
+                       decoration-success="state == 'cerrada'"/>
+                <field name="tiene_diferencias" widget="boolean_toggle"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="fsm_route_dayroute_search_insa" model="ir.ui.view">
+        <field name="name">fsm.route.dayroute.search.insa</field>
+        <field name="model">fsm.route.dayroute</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="reparto_numero"/>
+                <field name="repartidor_id"/>
+                <field name="route_id"/>
+                <field name="date"/>
+                <!-- RN-09: el filtro dedicado que se usa a diario para
+                     ubicar los repartos con diferencias sin resolver. -->
+                <filter string="Con diferencias" name="con_diferencias" domain="[('tiene_diferencias', '=', True)]"/>
+                <separator/>
+                <filter string="Hoy" name="hoy" domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Repartidor" name="group_repartidor" context="{'group_by': 'repartidor_id'}"/>
+                    <!-- C-01: "la hoja de ruta del lunes siempre es la
+                         misma, la del martes siempre es la misma" — poder
+                         agrupar por día de la semana, no solo por fecha. -->
+                    <filter string="Día de la semana" name="group_dia_semana" context="{'group_by': 'dia_semana'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="fieldservice_route.action_fsm_route_dayroute" model="ir.actions.act_window">
+        <field name="search_view_id" ref="fsm_route_dayroute_search_insa"/>
+    </record>
+
+    <!-- R-07: "Finalizar con diferencias". Una línea por diferencia, cada
+         una con su motivo — alimenta el diario de pérdidas. -->
+    <record id="insa_cerrar_con_diferencias_wizard_form" model="ir.ui.view">
+        <field name="name">insa.cerrar.con.diferencias.wizard.form</field>
+        <field name="model">insa.cerrar.con.diferencias.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Finalizar con diferencias">
+                <field name="hoja_ruta_id" invisible="1"/>
+                <p class="text-muted">
+                    Toda liquidación se cierra (RN-14), pero cada diferencia
+                    queda en el diario de pérdidas con su motivo. Cantidad e
+                    importe positivos son faltantes; negativos, sobrantes. El
+                    importe de los productos es una estimación a precio de
+                    lista: corregilo si hace falta.
+                </p>
+                <field name="linea_ids">
+                    <list editable="bottom" create="false" delete="false">
+                        <field name="tipo" readonly="1" force_save="1"/>
+                        <field name="product_id" readonly="1" force_save="1"/>
+                        <field name="cantidad" readonly="1" force_save="1"/>
+                        <field name="importe"/>
+                        <field name="motivo_id" options="{'no_create': True}"/>
+                        <field name="observacion"/>
+                    </list>
+                </field>
+                <group>
+                    <field name="motivo" placeholder="Observación general del cierre (obligatoria)..."/>
+                </group>
+                <footer>
+                    <button name="action_confirmar" type="object" string="Finalizar reparto" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- R-04: "Declarar efectivo" — pop-up con carga por denominación,
+         replicando el ticket del cajero de depósito. -->
+    <record id="insa_declarar_efectivo_wizard_form" model="ir.ui.view">
+        <field name="name">insa.declarar.efectivo.wizard.form</field>
+        <field name="model">insa.declarar.efectivo.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Declarar efectivo">
+                <field name="hoja_ruta_id" invisible="1"/>
+                <p class="text-muted">
+                    Cargá la cantidad de billetes de cada denominación tal como
+                    figura en el ticket del cajero. Si hay monedas o billetes
+                    de otra denominación, agregá una línea.
+                </p>
+                <field name="linea_ids">
+                    <list editable="bottom">
+                        <field name="denominacion"/>
+                        <field name="cantidad"/>
+                        <field name="subtotal" sum="Total"/>
+                    </list>
+                </field>
+                <group>
+                    <group>
+                        <field name="total_declarado"/>
+                        <field name="total_cobrado"/>
+                        <field name="diferencia" invisible="diferencia != 0"/>
+                        <field name="diferencia" class="text-danger fw-bold" invisible="diferencia == 0"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_confirmar" type="object" string="Declarar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- 4.7: "Verificar efectivo" — segundo control, independiente de la
+         declaración. El controlador acredita usuario y contraseña, mismo
+         patrón que insa.aprobar.control.playa.wizard. -->
+    <record id="insa_verificar_efectivo_wizard_form" model="ir.ui.view">
+        <field name="name">insa.verificar.efectivo.wizard.form</field>
+        <field name="model">insa.verificar.efectivo.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Verificar efectivo">
+                <field name="hoja_ruta_id" invisible="1"/>
+                <p class="text-muted">
+                    Solo un usuario con permiso de <b>Controlador de playa</b>
+                    puede verificar el efectivo. Contá el mismo efectivo que
+                    declaró la administrativa, sin mirar su número.
+                </p>
+                <group>
+                    <field name="login" placeholder="usuario del controlador"/>
+                    <field name="password" password="True"/>
+                </group>
+                <field name="linea_ids">
+                    <list editable="bottom">
+                        <field name="denominacion"/>
+                        <field name="cantidad"/>
+                        <field name="subtotal" sum="Total"/>
+                    </list>
+                </field>
+                <group>
+                    <group>
+                        <field name="total_contado"/>
+                        <field name="total_declarado"/>
+                        <field name="diferencia" invisible="diferencia != 0"/>
+                        <field name="diferencia" class="text-danger fw-bold" invisible="diferencia == 0"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_confirmar" type="object" string="Verificar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

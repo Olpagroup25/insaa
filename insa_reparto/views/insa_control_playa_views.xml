@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="insa_control_playa_list" model="ir.ui.view">
+        <field name="name">insa.control.playa.list</field>
+        <field name="model">insa.control.playa</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'borrador'">
+                <field name="hoja_ruta_id"/>
+                <field name="tipo" widget="badge"
+                       decoration-info="tipo == 'salida'"
+                       decoration-success="tipo == 'entrada'"/>
+                <!-- C-10: la hora del control es dato operativo, no
+                     metadato: el ejemplo real de la reunión es salida
+                     08:06 / entrada 16:05, y de ahí sale la duración de
+                     la jornada. -->
+                <field name="fecha_hora"/>
+                <field name="user_id"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'borrador'"
+                       decoration-success="state == 'confirmado'"/>
+                <field name="aprobado_por_id" optional="show"/>
+                <field name="aprobado_fecha" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_control_playa_form" model="ir.ui.view">
+        <field name="name">insa.control.playa.form</field>
+        <field name="model">insa.control.playa</field>
+        <field name="arch" type="xml">
+            <form string="Control de playa">
+                <header>
+                    <!-- C-08/C-09: la aprobación pide usuario y contraseña
+                         de un controlador. Acá es el fallback web; el 99%
+                         de las veces se hace desde la app, con el
+                         repartidor entregándole el teléfono. -->
+                    <button name="action_abrir_wizard_aprobar" type="object"
+                            string="Aprobar control" class="oe_highlight"
+                            invisible="state != 'borrador'"/>
+                    <!-- R-06: la administrativa de cierre también puede
+                         reabrir un control aprobado para corregirlo desde la
+                         web, y volver a confirmarlo ella misma. -->
+                    <button name="action_volver_a_borrador" type="object"
+                            string="Volver a borrador"
+                            invisible="state != 'confirmado'"
+                            groups="insa_reparto.group_supervisor,insa_reparto.group_administrativa_cierre"
+                            confirm="Esto anula la aprobación del controlador y habilita a corregir el conteo. ¿Continuar?"/>
+                    <button name="action_confirmar_correccion" type="object"
+                            string="Confirmar corrección" class="oe_highlight"
+                            invisible="state != 'borrador' or not reabierto_para_correccion"
+                            groups="insa_reparto.group_administrativa_cierre"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <field name="reabierto_para_correccion" invisible="1"/>
+                    <div class="alert alert-info" role="alert"
+                         invisible="not reabierto_para_correccion">
+                        Control reabierto para corrección: el conteo anterior
+                        quedó registrado en el historial de la hoja de ruta.
+                        Corregí las cantidades y confirmá la corrección.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state == 'confirmado' or reabierto_para_correccion">
+                        Este control todavía no fue aprobado por un
+                        controlador de playa. Sin la aprobación del control de
+                        <b>salida</b> el repartidor no sale a la calle, y sin la
+                        del control de <b>entrada</b> la liquidación no arroja
+                        resultados.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="hoja_ruta_id"/>
+                            <field name="tipo"/>
+                            <field name="fecha_hora"/>
+                            <field name="kilometros"/>
+                        </group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="aprobado_por_id"/>
+                            <field name="aprobado_fecha"/>
+                        </group>
+                    </group>
+                    <!-- R-05 (14/09, corrige C-05): "en la salida solo sale
+                         con mercadería llena; en la entrada ya aparecen los
+                         tres campos". Vacíos y fallados se ocultan en la
+                         salida; la validación en cero sigue en el modelo. -->
+                    <!-- 4.4 (revisión 29/09): A cargar (pedidos) y Extra
+                         solo en salida — precarga desde el pedido habitual
+                         (4.3) de los clientes de la hoja; ver
+                         _precargar_pedido_habitual. -->
+                    <field name="linea_ids" readonly="state == 'confirmado'">
+                        <list editable="bottom">
+                            <field name="tipo" column_invisible="1"/>
+                            <field name="product_id"/>
+                            <field name="a_cargar_pedidos"
+                                   column_invisible="parent.tipo != 'salida'"/>
+                            <field name="cantidad" sum="Llenos"/>
+                            <field name="cantidad_extra"
+                                   column_invisible="parent.tipo != 'salida'"/>
+                            <field name="cantidad_vacia" sum="Vacíos"
+                                   column_invisible="parent.tipo == 'salida'"/>
+                            <field name="cantidad_fallada" sum="Fallados"
+                                   column_invisible="parent.tipo == 'salida'"
+                                   decoration-danger="cantidad_fallada > 0"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="insa_aprobar_control_playa_wizard_form" model="ir.ui.view">
+        <field name="name">insa.aprobar.control.playa.wizard.form</field>
+        <field name="model">insa.aprobar.control.playa.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Aprobar control de playa">
+                <field name="control_playa_id" invisible="1"/>
+                <p class="text-muted">
+                    Solo un usuario con permiso de <b>Controlador de playa</b>
+                    puede aprobar un control. El repartidor no puede aprobar su
+                    propio conteo.
+                </p>
+                <group>
+                    <field name="login" placeholder="usuario del controlador"/>
+                    <field name="password" password="True"/>
+                </group>
+                <footer>
+                    <button name="action_confirmar" type="object"
+                            string="Aprobar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="insa_control_playa_search" model="ir.ui.view">
+        <field name="name">insa.control.playa.search</field>
+        <field name="model">insa.control.playa</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="hoja_ruta_id"/>
+                <field name="aprobado_por_id"/>
+                <filter string="Pendientes de aprobación" name="sin_aprobar"
+                        domain="[('state', '=', 'borrador')]"/>
+                <separator/>
+                <filter string="Salida" name="f_salida" domain="[('tipo', '=', 'salida')]"/>
+                <filter string="Entrada" name="f_entrada" domain="[('tipo', '=', 'entrada')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Tipo" name="group_tipo" context="{'group_by': 'tipo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insa_control_playa" model="ir.actions.act_window">
+        <field name="name">Controles de playa</field>
+        <field name="res_model">insa.control.playa</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="insa_control_playa_search"/>
+    </record>
+</odoo>

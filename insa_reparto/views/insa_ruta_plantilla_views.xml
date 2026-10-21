@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="insa_ruta_plantilla_list" model="ir.ui.view">
+        <field name="name">insa.ruta.plantilla.list</field>
+        <field name="model">insa.ruta.plantilla</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="route_id"/>
+                <field name="dia_semana"/>
+                <field name="cantidad_clientes"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_ruta_plantilla_form" model="ir.ui.view">
+        <field name="name">insa.ruta.plantilla.form</field>
+        <field name="model">insa.ruta.plantilla</field>
+        <field name="arch" type="xml">
+            <form string="Orden de clientes">
+                <header>
+                    <button name="action_generar_hoja_ruta_hoy" type="object"
+                            string="Generar hoja de ruta de hoy" class="oe_highlight"
+                            confirm="Esto crea (o completa) la hoja de ruta de hoy con los clientes ordenados de esta plantilla. ¿Continuar?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="route_id"/>
+                            <field name="dia_semana"/>
+                        </group>
+                        <group>
+                            <field name="cantidad_clientes" readonly="1"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        C-18 / RN-26: "el orden no corresponde a la aproximación de mi
+                        ubicación con el cliente, sino a cómo se haya tomado el trabajo
+                        de ordenarlo el repartidor y el supervisor" — es manual y
+                        heredado, no se calcula por proximidad. R-08: acá se ven
+                        todos los clientes del reparto, pero a la hoja de ruta del
+                        día solo pasan los que están en estado <b>Activo</b>. Hacé click en
+                        <b>Ordenar</b> para mandar un cliente a la fila, arrastrá desde
+                        el handle (⣿) en "Clientes ordenados" para insertarlo en la
+                        posición exacta, y <b>Quitar</b> para devolverlo a "sin
+                        ordenar". Todos los repartidores pueden reordenar (RN-27).
+                    </div>
+                    <group>
+                        <group string="Clientes sin ordenar">
+                            <field name="line_sin_ordenar_ids" nolabel="1">
+                                <list editable="bottom" delete="true">
+                                    <field name="partner_id"/>
+                                    <field name="direccion" readonly="1"/>
+                                    <field name="estado_cliente" widget="badge"
+                                           decoration-success="estado_cliente == 'activo'"
+                                           decoration-danger="estado_cliente == 'baja'"
+                                           decoration-warning="estado_cliente in ('moroso', 'gestion_baja', 'no_consume')"/>
+                                    <button name="action_ordenar" type="object"
+                                            string="Ordenar" icon="fa-arrow-right"
+                                            class="btn-link"/>
+                                </list>
+                            </field>
+                        </group>
+                        <group string="Clientes ordenados">
+                            <field name="line_ordenadas_ids" nolabel="1">
+                                <list editable="bottom" delete="false" default_order="secuencia">
+                                    <field name="secuencia" widget="handle"/>
+                                    <field name="partner_id" readonly="1"/>
+                                    <field name="direccion" readonly="1"/>
+                                    <field name="estado_cliente" widget="badge"
+                                           decoration-success="estado_cliente == 'activo'"
+                                           decoration-danger="estado_cliente == 'baja'"
+                                           decoration-warning="estado_cliente in ('moroso', 'gestion_baja', 'no_consume')"/>
+                                    <button name="action_quitar" type="object"
+                                            string="Quitar" icon="fa-arrow-left"
+                                            class="btn-link"/>
+                                </list>
+                            </field>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="insa_ruta_plantilla_search" model="ir.ui.view">
+        <field name="name">insa.ruta.plantilla.search</field>
+        <field name="model">insa.ruta.plantilla</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="route_id"/>
+                <field name="dia_semana"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Reparto" name="group_route" context="{'group_by': 'route_id'}"/>
+                    <filter string="Día de la semana" name="group_dia" context="{'group_by': 'dia_semana'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insa_ruta_plantilla" model="ir.actions.act_window">
+        <field name="name">Orden de clientes</field>
+        <field name="res_model">insa.ruta.plantilla</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="insa_ruta_plantilla_search"/>
+    </record>
+</odoo>

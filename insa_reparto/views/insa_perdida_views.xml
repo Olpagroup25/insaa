@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- R-07: "diario de pérdidas" — reporte por motivo, por reparto y por
+         período ("sería bueno, para tomar acciones"). Los registros nacen
+         solos al finalizar un reparto con diferencias; no se crean a mano. -->
+    <record id="insa_reparto_perdida_list" model="ir.ui.view">
+        <field name="name">insa.reparto.perdida.list</field>
+        <field name="model">insa.reparto.perdida</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false">
+                <field name="fecha"/>
+                <field name="route_id"/>
+                <field name="hoja_ruta_id" optional="hide"/>
+                <field name="tipo"/>
+                <field name="product_id"/>
+                <field name="cantidad"/>
+                <field name="importe" sum="Total"/>
+                <field name="motivo_id"/>
+                <field name="observacion" optional="show"/>
+                <field name="user_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="insa_reparto_perdida_search" model="ir.ui.view">
+        <field name="name">insa.reparto.perdida.search</field>
+        <field name="model">insa.reparto.perdida</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="motivo_id"/>
+                <field name="route_id"/>
+                <field name="product_id"/>
+                <field name="hoja_ruta_id"/>
+                <filter string="Efectivo" name="f_efectivo" domain="[('tipo', '=', 'efectivo')]"/>
+                <filter string="Productos y envases" name="f_productos" domain="[('tipo', '!=', 'efectivo')]"/>
+                <separator/>
+                <filter string="Fecha" name="f_fecha" date="fecha"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Motivo" name="group_motivo" context="{'group_by': 'motivo_id'}"/>
+                    <filter string="Reparto" name="group_route" context="{'group_by': 'route_id'}"/>
+                    <filter string="Mes" name="group_mes" context="{'group_by': 'fecha:month'}"/>
+                    <filter string="Tipo" name="group_tipo" context="{'group_by': 'tipo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="insa_reparto_perdida_pivot" model="ir.ui.view">
+        <field name="name">insa.reparto.perdida.pivot</field>
+        <field name="model">insa.reparto.perdida</field>
+        <field name="arch" type="xml">
+            <pivot string="Pérdidas">
+                <field name="motivo_id" type="row"/>
+                <field name="fecha" interval="month" type="col"/>
+                <field name="importe" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="insa_reparto_perdida_graph" model="ir.ui.view">
+        <field name="name">insa.reparto.perdida.graph</field>
+        <field name="model">insa.reparto.perdida</field>
+        <field name="arch" type="xml">
+            <graph string="Pérdidas por motivo" type="bar">
+                <field name="motivo_id"/>
+                <field name="importe" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_insa_reparto_perdida" model="ir.actions.act_window">
+        <field name="name">Pérdidas</field>
+        <field name="res_model">insa.reparto.perdida</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="search_view_id" ref="insa_reparto_perdida_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin pérdidas registradas</p>
+            <p>Se registran solas al finalizar un reparto con diferencias:
+               cada diferencia queda con su motivo.</p>
+        </field>
+    </record>
+
+    <record id="insa_reparto_perdida_motivo_list" model="ir.ui.view">
+        <field name="name">insa.reparto.perdida.motivo.list</field>
+        <field name="model">insa.reparto.perdida.motivo</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_insa_reparto_perdida_motivo" model="ir.actions.act_window">
+        <field name="name">Motivos de pérdida</field>
+        <field name="res_model">insa.reparto.perdida.motivo</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <menuitem id="menu_reparto_liquidacion_perdida" name="Pérdidas"
+              parent="menu_reparto_liquidacion"
+              action="action_insa_reparto_perdida"
+              sequence="30"/>
+
+    <menuitem id="menu_reparto_perdida_motivo" name="Motivos de pérdida"
+              parent="menu_reparto_config"
+              action="action_insa_reparto_perdida_motivo"
+              groups="insa_reparto.group_administrativa_cierre,insa_reparto.group_supervisor"
+              sequence="30"/>
+</odoo>

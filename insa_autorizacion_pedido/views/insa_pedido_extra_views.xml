@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Caso: agregar "Solicitado por" al listado de pedidos extra que vive
+         embebido en la hoja de ruta (fsm.route.dayroute). -->
+    <record id="fsm_route_dayroute_form_solicitado_por" model="ir.ui.view">
+        <field name="name">fsm.route.dayroute.form.solicitado.por</field>
+        <field name="model">fsm.route.dayroute</field>
+        <field name="inherit_id" ref="insa_reparto.fsm_route_dayroute_form_insa"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='pedido_extra_ids']/list/field[@name='partner_id']"
+                   position="after">
+                <field name="solicitado_por_id"
+                       domain="[('is_company', '=', False)]"/>
+            </xpath>
+            <!-- "Qué pidió" se carga ahora en un formulario (productos y
+                 cantidades): "Solicitado por" también va ahí. -->
+            <xpath expr="//field[@name='pedido_extra_ids']/form//field[@name='partner_id']"
+                   position="after">
+                <field name="solicitado_por_id"
+                       domain="[('is_company', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

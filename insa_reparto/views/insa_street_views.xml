@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_insa_street_list" model="ir.ui.view">
+        <field name="name">insa.street.list</field>
+        <field name="model">insa.street</field>
+        <field name="arch" type="xml">
+            <list string="Calles" editable="bottom">
+                <field name="city_id"/>
+                <field name="name"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_insa_street" model="ir.actions.act_window">
+        <field name="name">Calles</field>
+        <field name="res_model">insa.street</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_insa_street" name="Calles"
+              parent="menu_reparto_config"
+              action="action_insa_street"
+              sequence="20"/>
+
+</odoo>

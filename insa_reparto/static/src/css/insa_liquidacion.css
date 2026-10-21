@@ -1,0 +1,28 @@
+/* Copyright 2026 Olpa Group
+ * License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html)
+ *
+ * C-15: "cuando hay alguna diferencia dentro de la liquidación,
+ * automáticamente el renglón que tiene la diferencia se pinta de un
+ * color amarillo completo... el rectángulo largo." Odoo decoration-warning
+ * solo pinta el TEXTO (.text-warning); acá se convierte en relleno de
+ * fondo de la fila entera, scopeado a las listas de liquidación de INSA
+ * (clase o_insa_liquidacion_row en el <list>) para no tocar el
+ * decoration-warning estándar de cualquier otra vista de Odoo.
+ *
+ * A propósito no hay relleno para "sin diferencia": "entrás a una
+ * liquidación y ves todo en blanco: la liquidación está limpia" — antes
+ * había decoration-success (verde) en diferencia == 0, y se sacó de las
+ * vistas junto con este CSS.
+ */
+.o_insa_liquidacion_row tr.o_data_row.text-warning {
+    background-color: #FFF3B0;
+    color: inherit;
+}
+/* Cada <td> trae su propio fondo blanco opaco (var(--o-view-background-
+ * color)) que tapa el de la fila — sin esto, la fila se pinta pero no se
+ * ve: solo queda el texto en color warning, que es justo lo que C-15 NO
+ * quiere. */
+.o_insa_liquidacion_row tr.o_data_row.text-warning > td {
+    background-color: #FFF3B0;
+    color: inherit;
+}
