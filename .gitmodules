@@ -1,0 +1,4 @@
+[submodule "Olpagroup25/olpagroup-modulos-comerciales"]
+	path = Olpagroup25/olpagroup-modulos-comerciales
+	url = git@github.com:Olpagroup25/olpagroup-modulos-comerciales.git
+	branch = lambel
